@@ -127,7 +127,6 @@ class Devices extends Table {
 class SyncLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get deviceId => text()();
-  TextColumn get tableName => text()();
   IntColumn get recordId => integer()();
   TextColumn get action => text()();
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();

@@ -67,7 +67,7 @@ class InventoryService {
             name: name,
             color: Value(color),
             category: category,
-            unit: unit,
+            unit: Value(unit),
             packSize: Value(packSize),
             minStock: Value(minStock),
           ),
