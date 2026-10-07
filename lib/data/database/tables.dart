@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 @DataClassName('User')
 class Users extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get username => text().unique()();
   TextColumn get passwordHash => text()();
@@ -12,10 +13,12 @@ class Users extends Table {
   IntColumn get createdBy => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastLogin => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 @DataClassName('Job')
 class Jobs extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
@@ -31,6 +34,7 @@ class Jobs extends Table {
 
 @DataClassName('JobAssignment')
 class JobAssignments extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   IntColumn get jobId => integer()();
   IntColumn get userId => integer()();
@@ -39,6 +43,7 @@ class JobAssignments extends Table {
 
 @DataClassName('JobPhoto')
 class JobPhotos extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   IntColumn get jobId => integer()();
   TextColumn get photoPath => text()();
@@ -47,10 +52,12 @@ class JobPhotos extends Table {
   TextColumn get approvalStatus => text().withDefault(const Constant('PENDING'))();
   TextColumn get description => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 @DataClassName('InventoryItem')
 class InventoryItems extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get barcode => text().unique()();
   TextColumn get name => text()();
@@ -67,6 +74,7 @@ class InventoryItems extends Table {
 
 @DataClassName('StockMovement')
 class StockMovements extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   IntColumn get itemId => integer()();
   TextColumn get movementType => text()(); // GIRIS, CIKIS, SAYIM, DUZELTME
@@ -79,6 +87,7 @@ class StockMovements extends Table {
 
 @DataClassName('MaintenancePlan')
 class MaintenancePlans extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
@@ -89,10 +98,12 @@ class MaintenancePlans extends Table {
   IntColumn get isActive => integer().withDefault(const Constant(1))();
   IntColumn get createdBy => integer()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 @DataClassName('MaintenanceRecord')
 class MaintenanceRecords extends Table {
+  TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   IntColumn get planId => integer()();
   IntColumn get doneBy => integer()();

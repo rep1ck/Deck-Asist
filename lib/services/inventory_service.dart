@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../data/database/app_database.dart';
+import '../core/utils/sync_identity.dart';
 
 class InventoryService {
   final AppDatabase db;
@@ -19,6 +20,7 @@ class InventoryService {
     String? note,
   }) async {
     await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
+          syncId: Value(SyncIdentity.newId()),
           itemId: itemId,
           movementType: movementType,
           quantity: quantity,
@@ -60,6 +62,7 @@ class InventoryService {
   }) async {
     return await db.into(db.inventoryItems).insert(
           InventoryItemsCompanion.insert(
+            syncId: Value(SyncIdentity.newId()),
             barcode: barcode.trim(),
             name: name,
             color: Value(color),

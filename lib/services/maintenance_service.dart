@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../data/database/app_database.dart';
 import 'notification_service.dart';
+import '../core/utils/sync_identity.dart';
 
 class MaintenanceService {
   final AppDatabase db;
@@ -20,6 +21,7 @@ class MaintenanceService {
 
     return await db.into(db.maintenancePlans).insert(
           MaintenancePlansCompanion.insert(
+            syncId: Value(SyncIdentity.newId()),
             title: title,
             description: Value(description),
             intervalDays: intervalDays,
@@ -46,6 +48,7 @@ class MaintenanceService {
 
     await db.into(db.maintenanceRecords).insert(
           MaintenanceRecordsCompanion.insert(
+            syncId: Value(SyncIdentity.newId()),
             planId: planId,
             doneBy: doneById,
             doneDate: completedDate,
@@ -61,6 +64,7 @@ class MaintenanceService {
         .write(MaintenancePlansCompanion(
       lastDoneDate: Value(completedDate),
       nextDueDate: Value(nextDue),
+      updatedAt: Value(DateTime.now()),
     ));
 
     await NotificationService.maintenanceCompleted(

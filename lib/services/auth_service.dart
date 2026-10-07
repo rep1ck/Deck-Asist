@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../core/utils/password_utils.dart';
 import '../data/database/app_database.dart';
+import '../core/utils/sync_identity.dart';
 
 class AuthService {
   final AppDatabase db;
@@ -15,7 +16,7 @@ class AuthService {
     if (!PasswordUtils.verify(password, user.passwordHash)) return null;
 
     await (db.update(db.users)..where((u) => u.id.equals(user.id))).write(
-      UsersCompanion(lastLogin: Value(DateTime.now())),
+      UsersCompanion(lastLogin: Value(DateTime.now()), updatedAt: Value(DateTime.now())),
     );
     return user;
   }
@@ -37,6 +38,7 @@ class AuthService {
     final canManage = ['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(role);
 
     await db.into(db.users).insert(UsersCompanion.insert(
+          syncId: Value(SyncIdentity.newId()),
           username: username.trim(),
           passwordHash: PasswordUtils.hash(password),
           fullName: fullName.trim(),
@@ -54,7 +56,7 @@ class AuthService {
     if (user == null || user.username == 'root@zeynepc.arkas') return;
 
     await (db.update(db.users)..where((u) => u.id.equals(userId))).write(
-      UsersCompanion(isActive: Value(isActive ? 1 : 0)),
+      UsersCompanion(isActive: Value(isActive ? 1 : 0), updatedAt: Value(DateTime.now())),
     );
   }
 
@@ -69,7 +71,7 @@ class AuthService {
     if (!PasswordUtils.verify(oldPassword, user.passwordHash)) return false;
 
     await (db.update(db.users)..where((u) => u.id.equals(userId))).write(
-      UsersCompanion(passwordHash: Value(PasswordUtils.hash(newPassword))),
+      UsersCompanion(passwordHash: Value(PasswordUtils.hash(newPassword)), updatedAt: Value(DateTime.now())),
     );
     return true;
   }

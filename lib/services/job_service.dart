@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../data/database/app_database.dart';
 import 'notification_service.dart';
+import '../core/utils/sync_identity.dart';
 
 class JobService {
   final AppDatabase db;
@@ -15,6 +16,7 @@ class JobService {
     List<int> assignedUserIds = const [],
   }) async {
     final jobId = await db.into(db.jobs).insert(JobsCompanion.insert(
+          syncId: Value(SyncIdentity.newId()),
           title: title,
           description: Value(description),
           location: Value(location),
@@ -24,6 +26,7 @@ class JobService {
 
     for (final userId in assignedUserIds) {
       await db.into(db.jobAssignments).insert(JobAssignmentsCompanion.insert(
+            syncId: Value(SyncIdentity.newId()),
             jobId: jobId,
             userId: userId,
           ));
@@ -82,6 +85,7 @@ class JobService {
     String? description,
   }) async {
     await db.into(db.jobPhotos).insert(JobPhotosCompanion.insert(
+          syncId: Value(SyncIdentity.newId()),
           jobId: jobId,
           photoPath: photoPath,
           uploadedBy: uploadedById,
@@ -98,6 +102,7 @@ class JobService {
       JobPhotosCompanion(
         approvedBy: Value(approvedById),
         approvalStatus: Value(isApproved ? 'APPROVED' : 'REJECTED'),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
