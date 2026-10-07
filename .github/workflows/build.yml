@@ -24,7 +24,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          # cache satırı YOK — android/ henüz yokken gradle aranmaz
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -42,12 +41,19 @@ jobs:
           from pathlib import Path
           import re
           p = Path('android/app/src/main/AndroidManifest.xml')
-          if p.exists():
-              s = p.read_text()
-              permission = '<uses-permission android:name="android.permission.INTERNET" />'
-              if permission not in s:
-                  s = re.sub(r'(<manifest[^>]*>)', r'\1\n    ' + permission, s, count=1)
-                  p.write_text(s)
+          if not p.exists():
+              raise SystemExit('AndroidManifest.xml not found')
+          s = p.read_text(encoding='utf-8')
+          permission = '<uses-permission android:name="android.permission.INTERNET" />'
+          if permission not in s:
+              s = re.sub(
+                  r'(<manifest\b[^>]*>)',
+                  r'\1\n    ' + permission,
+                  s,
+                  count=1,
+              )
+              p.write_text(s, encoding='utf-8')
+          print('INTERNET permission OK')
           PY
 
       - name: Install dependencies
