@@ -7,16 +7,9 @@ class NotificationService {
   static Future<void> init() async {
     tz.initializeTimeZones();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const windows = WindowsInitializationSettings(
-      appName: 'Deck Asist',
-      appUserModelId: 'com.deckmaster.app',
-      guid: 'd7a2f8c1-3b4e-4f9a-9c1d-8e7f6a5b4c3d',
-    );
     await _plugin.initialize(
-      const InitializationSettings(android: android, windows: windows),
+      const InitializationSettings(android: android),
     );
-
-    // Android 13+ requires runtime notification permission.
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -29,8 +22,8 @@ class NotificationService {
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'deck_master_channel',
-      'Güverte Bildirimleri',
+      'deck_asist_channel',
+      'Deck Asist Bildirimleri',
       channelDescription: 'İş ve bakım bildirimleri',
       importance: Importance.high,
       priority: Priority.high,

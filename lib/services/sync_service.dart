@@ -62,7 +62,6 @@ class SyncService {
       InternetAddress.anyIPv4,
       discoveryPort,
       reuseAddress: true,
-      reusePort: true,
     );
     _discoverySocket!.broadcastEnabled = true;
     _discoverySocket!.listen(_handleDiscovery);
@@ -273,11 +272,31 @@ class SyncService {
       'jobAssignments': assignments.map((x) => {
             'syncId': x.syncId, 'jobSyncId': jobById[x.jobId], 'userSyncId': userById[x.userId], 'assignedAt': x.assignedAt.toUtc().toIso8601String(),
           }).toList(),
-      'jobPhotos': photos.map((x) => {
-            'syncId': x.syncId, 'jobSyncId': jobById[x.jobId], 'photoPath': x.photoPath, 'uploadedBySyncId': userById[x.uploadedBy],
-            'approvedBySyncId': x.approvedBy == null ? null : userById[x.approvedBy!], 'approvalStatus': x.approvalStatus, 'description': x.description,
-            'createdAt': x.createdAt.toUtc().toIso8601String(), 'updatedAt': x.updatedAt.toUtc().toIso8601String(),
-          }).toList(),
+      'jobPhotos': await Future.wait(photos.map((x) async {
+            String? b64;
+            try {
+              final f = File(x.photoPath);
+              if (await f.exists()) {
+                final bytes = await f.readAsBytes();
+                // Limit ~1.5MB per photo for LAN transfer
+                if (bytes.length <= 1500000) {
+                  b64 = base64Encode(bytes);
+                }
+              }
+            } catch (_) {}
+            return {
+              'syncId': x.syncId,
+              'jobSyncId': jobById[x.jobId],
+              'photoPath': x.photoPath,
+              'photoBase64': b64,
+              'uploadedBySyncId': userById[x.uploadedBy],
+              'approvedBySyncId': x.approvedBy == null ? null : userById[x.approvedBy!],
+              'approvalStatus': x.approvalStatus,
+              'description': x.description,
+              'createdAt': x.createdAt.toUtc().toIso8601String(),
+              'updatedAt': x.updatedAt.toUtc().toIso8601String(),
+            };
+          })),
       'inventoryItems': inventory.map((x) => {
             'syncId': x.syncId, 'barcode': x.barcode, 'name': x.name, 'color': x.color, 'brand': x.brand, 'category': x.category,
             'unit': x.unit, 'packSize': x.packSize, 'currentStock': x.currentStock, 'minStock': x.minStock,
@@ -453,22 +472,52 @@ class SyncService {
     return true;
   }
 
+  Future<String> _savePhotoBytes(String syncId, String? b64, String fallbackPath) async {
+    if (b64 == null || b64.isEmpty) return fallbackPath;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final photoDir = Directory(p.join(dir.path, 'synced_photos'));
+      if (!await photoDir.exists()) await photoDir.create(recursive: true);
+      final out = File(p.join(photoDir.path, '$syncId.jpg'));
+      await out.writeAsBytes(base64Decode(b64), flush: true);
+      return out.path;
+    } catch (_) {
+      return fallbackPath;
+    }
+  }
+
   Future<bool> _mergePhoto(Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
     final sid = r['syncId'] as String;
     final remoteUpdated = DateTime.parse(r['updatedAt']);
     final local = await (db.select(db.jobPhotos)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     final approvedBy = r['approvedBySyncId'] == null ? null : users[r['approvedBySyncId']];
+    final jobId = jobs[r['jobSyncId']];
+    final uploader = users[r['uploadedBySyncId']];
+    if (jobId == null || uploader == null) return false;
+    final path = await _savePhotoBytes(sid, r['photoBase64'] as String?, r['photoPath'] as String? ?? '');
     if (local == null) {
       await db.into(db.jobPhotos).insert(JobPhotosCompanion.insert(
-        syncId: Value(sid), jobId: jobs[r['jobSyncId']]!, photoPath: r['photoPath'], uploadedBy: users[r['uploadedBySyncId']]!, approvedBy: Value(approvedBy),
-        approvalStatus: Value(r['approvalStatus']), description: Value(r['description']), createdAt: Value(DateTime.parse(r['createdAt'])), updatedAt: Value(remoteUpdated),
+        syncId: Value(sid),
+        jobId: jobId,
+        photoPath: path,
+        uploadedBy: uploader,
+        approvedBy: Value(approvedBy),
+        approvalStatus: Value(r['approvalStatus'] as String? ?? 'PENDING'),
+        description: Value(r['description'] as String?),
+        createdAt: Value(DateTime.parse(r['createdAt'] as String)),
+        updatedAt: Value(remoteUpdated),
       ));
       return true;
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
       await (db.update(db.jobPhotos)..where((t) => t.id.equals(local.id))).write(JobPhotosCompanion(
-        jobId: Value(jobs[r['jobSyncId']]!), photoPath: Value(r['photoPath']), uploadedBy: Value(users[r['uploadedBySyncId']]!), approvedBy: Value(approvedBy),
-        approvalStatus: Value(r['approvalStatus']), description: Value(r['description']), updatedAt: Value(remoteUpdated),
+        jobId: Value(jobId),
+        photoPath: Value(path),
+        uploadedBy: Value(uploader),
+        approvedBy: Value(approvedBy),
+        approvalStatus: Value(r['approvalStatus'] as String? ?? local.approvalStatus),
+        description: Value(r['description'] as String?),
+        updatedAt: Value(remoteUpdated),
       ));
       return true;
     }
