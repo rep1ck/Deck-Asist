@@ -1,4 +1,4 @@
-```yaml
+yaml
 name: Build Deck Asist Android APK
 
 on:
@@ -133,4 +133,3 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
-```
