@@ -1,3 +1,4 @@
+```yaml
 name: Build Deck Asist Android APK
 
 on:
@@ -36,17 +37,28 @@ jobs:
         run: mkdir -p assets && touch assets/.gitkeep
 
       - name: Create Android platform
-        run: flutter create . --project-name deck_asist --platforms=android
+        run: |
+          flutter create . --project-name deck_asist --platforms=android
+
+          # flutter create otomatik olarak MyApp kullanan
+          # test/widget_test.dart oluşturur.
+          # Deck Asist'in ana sınıfı DeckMasterApp olduğu için
+          # bu varsayılan test CI analizinden önce kaldırılır.
+          rm -rf test
 
       - name: Allow LAN + camera permissions
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
+
           p = Path('android/app/src/main/AndroidManifest.xml')
+
           if not p.exists():
               raise SystemExit('AndroidManifest.xml not found')
+
           s = p.read_text(encoding='utf-8')
+
           perms = [
               '<uses-permission android:name="android.permission.INTERNET" />',
               '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
@@ -54,9 +66,16 @@ jobs:
               '<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />',
               '<uses-permission android:name="android.permission.CAMERA" />',
           ]
+
           for permission in perms:
               if permission not in s:
-                  s = re.sub(r'(<manifest\b[^>]*>)', r'\1\n    ' + permission, s, count=1)
+                  s = re.sub(
+                      r'(<manifest\b[^>]*>)',
+                      r'\1\n    ' + permission,
+                      s,
+                      count=1
+                  )
+
           p.write_text(s, encoding='utf-8')
           print('Permissions OK')
           PY
@@ -66,14 +85,32 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          for rel in ['android/app/build.gradle', 'android/app/build.gradle.kts']:
+
+          for rel in [
+              'android/app/build.gradle',
+              'android/app/build.gradle.kts'
+          ]:
               p = Path(rel)
+
               if not p.exists():
                   continue
+
               s = p.read_text(encoding='utf-8')
-              s2 = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', s)
-              s2 = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', s2)
+
+              s2 = re.sub(
+                  r'minSdk\s*=\s*\d+',
+                  'minSdk = 24',
+                  s
+              )
+
+              s2 = re.sub(
+                  r'minSdkVersion\s+\d+',
+                  'minSdkVersion 24',
+                  s2
+              )
+
               p.write_text(s2, encoding='utf-8')
+
               print(f'Updated {rel}')
           PY
 
@@ -96,4 +133,4 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
-
+```
