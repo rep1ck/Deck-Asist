@@ -2,9 +2,13 @@ name: Build Deck Asist Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -33,32 +37,47 @@ jobs:
           cache: true
 
       - name: Ensure assets folder
-        run: mkdir -p assets && touch assets/.gitkeep
+        run: |
+          mkdir -p assets
+          touch assets/.gitkeep
 
       - name: Create Android platform
-        run: flutter create . --project-name deck_asist --platforms=android
+        run: |
+          flutter create . --project-name deck_asist --platforms=android
+          rm -rf test
 
-      - name: Allow LAN + camera permissions
+      - name: Allow LAN and camera permissions
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('android/app/src/main/AndroidManifest.xml')
+
+          p = Path("android/app/src/main/AndroidManifest.xml")
+
           if not p.exists():
-              raise SystemExit('AndroidManifest.xml not found')
-          s = p.read_text(encoding='utf-8')
-          perms = [
+              raise SystemExit("AndroidManifest.xml not found")
+
+          s = p.read_text(encoding="utf-8")
+
+          permissions = [
               '<uses-permission android:name="android.permission.INTERNET" />',
               '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
               '<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />',
               '<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />',
               '<uses-permission android:name="android.permission.CAMERA" />',
           ]
-          for permission in perms:
+
+          for permission in permissions:
               if permission not in s:
-                  s = re.sub(r'(<manifest\b[^>]*>)', r'\1\n    ' + permission, s, count=1)
-          p.write_text(s, encoding='utf-8')
-          print('Permissions OK')
+                  s = re.sub(
+                      r"(<manifest\b[^>]*>)",
+                      r"\1\n    " + permission,
+                      s,
+                      count=1,
+                  )
+
+          p.write_text(s, encoding="utf-8")
+          print("Permissions OK")
           PY
 
       - name: Raise minSdk for plugins
@@ -66,15 +85,32 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          for rel in ['android/app/build.gradle', 'android/app/build.gradle.kts']:
-              p = Path(rel)
+
+          files = [
+              Path("android/app/build.gradle"),
+              Path("android/app/build.gradle.kts"),
+          ]
+
+          for p in files:
               if not p.exists():
                   continue
-              s = p.read_text(encoding='utf-8')
-              s2 = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', s)
-              s2 = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', s2)
-              p.write_text(s2, encoding='utf-8')
-              print(f'Updated {rel}')
+
+              s = p.read_text(encoding="utf-8")
+
+              s = re.sub(
+                  r"minSdk\s*=\s*\d+",
+                  "minSdk = 24",
+                  s,
+              )
+
+              s = re.sub(
+                  r"minSdkVersion\s+\d+",
+                  "minSdkVersion 24",
+                  s,
+              )
+
+              p.write_text(s, encoding="utf-8")
+              print(f"Updated {p}")
           PY
 
       - name: Install dependencies
@@ -96,4 +132,3 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
-
