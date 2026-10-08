@@ -1,8 +1,9 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
@@ -10,9 +11,6 @@ import 'package:path_provider/path_provider.dart';
 
 import '../data/database/app_database.dart';
 import 'sync_security.dart';
-import 'sync_security.dart';
-import 'sync_security.dart';
-
 class SyncResult {
   final bool success;
   final String message;
@@ -49,9 +47,6 @@ class SyncService {
   bool _syncing = false;
   final Map<String, String> _knownPeers = {};
   SyncSecurity? _security;
-  SyncSecurity? _security;
-  SyncSecurity? _security;
-
   SyncService(this.db);
 
   Future<String> get deviceId async => _deviceId ??= await _loadDeviceId();
@@ -61,9 +56,6 @@ class SyncService {
     await db.ensureSyncIds();
     _deviceId = await _loadDeviceId();
     _security = await SyncSecurity.fromDatabase(db);
-    _security = await SyncSecurity.fromDatabase(db);
-    _security = await SyncSecurity.fromDatabase(db);
-
     _server = await HttpServer.bind(InternetAddress.anyIPv4, httpPort, shared: true);
     _server!.listen(_handleRequest, onError: (_) {});
 
@@ -289,7 +281,7 @@ class SyncService {
       'deviceId': await deviceId,
       'sentAt': DateTime.now().toUtc().toIso8601String(),
       'users': users.map((x) => {
-            'syncId': x.syncId, 'username': x.username, 'passwordHash': x.passwordHash, 'fullName': x.fullName,
+            'syncId': x.syncId, 'username': x.username, 'fullName': x.fullName,
             'role': x.role, 'isActive': x.isActive, 'canManageUsers': x.canManageUsers, 'createdAt': x.createdAt.toUtc().toIso8601String(),
             'lastLogin': x.lastLogin?.toUtc().toIso8601String(), 'updatedAt': x.updatedAt.toUtc().toIso8601String(),
           }).toList(),
@@ -349,7 +341,7 @@ class SyncService {
           }).toList(),
       'maintenanceRecords': records.map((x) => {
             'syncId': x.syncId, 'planSyncId': planById[x.planId], 'doneBySyncId': userById[x.doneBy], 'doneDate': x.doneDate.toUtc().toIso8601String(),
-            'usedMaterials': x.usedMaterials, 'notes': x.notes, 'photoPath': x.photoPath, 'createdAt': x.createdAt.toUtc().toIso8601String(),
+            'usedMaterials': x.usedMaterials, 'notes': x.notes, 'photoPath': null, 'createdAt': x.createdAt.toUtc().toIso8601String(),
           }).toList(),
     };
   }
@@ -417,16 +409,16 @@ class SyncService {
     local ??= await (db.select(db.users)..where((t) => t.username.equals(r['username'] as String))).getSingleOrNull();
     if (local == null) {
       final id = await db.into(db.users).insert(UsersCompanion.insert(
-        syncId: Value(sid), username: r['username'], passwordHash: r['passwordHash'], fullName: r['fullName'], role: r['role'],
-        isActive: Value(r['isActive']), canManageUsers: Value(r['canManageUsers']), createdAt: Value(DateTime.parse(r['createdAt'])),
+        syncId: Value(sid), username: r['username'], passwordHash: sha256.convert(utf8.encode('deck-asist-disabled:')).toString(), fullName: r['fullName'], role: r['role'],
+        isActive: const Value(0), canManageUsers: Value(r['canManageUsers']), createdAt: Value(DateTime.parse(r['createdAt'])),
         lastLogin: Value(r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'])), updatedAt: Value(remoteUpdated),
       ));
       return _MergeOutcome(id, true, false);
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
       await (db.update(db.users)..where((t) => t.id.equals(local!.id))).write(UsersCompanion(
-        username: Value(r['username']), passwordHash: Value(r['passwordHash']), fullName: Value(r['fullName']), role: Value(r['role']),
-        isActive: Value(r['isActive']), canManageUsers: Value(r['canManageUsers']), lastLogin: Value(r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'])), updatedAt: Value(remoteUpdated),
+        username: Value(r['username']), fullName: Value(r['fullName']), role: Value(r['role']),
+        isActive: const Value(0), canManageUsers: Value(r['canManageUsers']), lastLogin: Value(r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'])), updatedAt: Value(remoteUpdated),
       ));
       return _MergeOutcome(local!.id, true, false);
     }

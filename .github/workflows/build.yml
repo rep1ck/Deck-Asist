@@ -1,4 +1,4 @@
-﻿name: Build Deck Asist Android APK
+name: Build Deck Asist Android APK
 
 on:
   push:
