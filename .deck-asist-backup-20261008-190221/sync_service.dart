@@ -11,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import '../data/database/app_database.dart';
 import 'sync_security.dart';
 import 'sync_security.dart';
-import 'sync_security.dart';
 
 class SyncResult {
   final bool success;
@@ -50,7 +49,6 @@ class SyncService {
   final Map<String, String> _knownPeers = {};
   SyncSecurity? _security;
   SyncSecurity? _security;
-  SyncSecurity? _security;
 
   SyncService(this.db);
 
@@ -60,7 +58,6 @@ class SyncService {
     if (_server != null) return;
     await db.ensureSyncIds();
     _deviceId = await _loadDeviceId();
-    _security = await SyncSecurity.fromDatabase(db);
     _security = await SyncSecurity.fromDatabase(db);
     _security = await SyncSecurity.fromDatabase(db);
 
@@ -636,6 +633,5 @@ class _MergeOutcome {
   final bool conflict;
   const _MergeOutcome(this.id, this.changed, this.conflict);
 }
-
 
 
