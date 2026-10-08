@@ -85,7 +85,7 @@ Seed edilen boya kayıtlarındaki `DEMO-xxxx` kodları gerçek Akzo Nobel barkod
 İlk veritabanı oluşturulduğunda örnek yönetici hesabı otomatik oluşturulur:
 
 - Kullanıcı: `root@zeynepc.arkas`
-- Şifre: `zeynepcroot`
+- Şifre: `******` mail ile ulaşın brlylmz77@gmailom
 
 Üretim kullanımında ilk girişten sonra bu parolanın değiştirilmesi gerekir.
 
