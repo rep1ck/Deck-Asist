@@ -416,13 +416,13 @@ class SyncService {
       return _MergeOutcome(id, true, false);
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
-      await (db.update(db.users)..where((t) => t.id.equals(local.id))).write(UsersCompanion(
+      await (db.update(db.users)..where((t) => t.id.equals(local!.id))).write(UsersCompanion(
         username: Value(r['username']), fullName: Value(r['fullName']), role: Value(r['role']),
         isActive: const Value(0), canManageUsers: Value(r['canManageUsers']), lastLogin: Value(r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'])), updatedAt: Value(remoteUpdated),
       ));
-      return _MergeOutcome(local.id, true, false);
+      return _MergeOutcome(local!.id, true, false);
     }
-    return _MergeOutcome(local.id, false, remoteUpdated != local.updatedAt);
+    return _MergeOutcome(local!.id, false, remoteUpdated != local.updatedAt);
   }
 
   Future<_MergeOutcome> _mergeJob(Map<String, dynamic> r, Map<String, int> users) async {
@@ -439,13 +439,13 @@ class SyncService {
       return _MergeOutcome(id, true, false);
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
-      await (db.update(db.jobs)..where((t) => t.id.equals(local.id))).write(JobsCompanion(
+      await (db.update(db.jobs)..where((t) => t.id.equals(local!.id))).write(JobsCompanion(
         title: Value(r['title']), description: Value(r['description']), location: Value(r['location']), priority: Value(r['priority']), status: Value(r['status']),
         createdBy: Value(createdBy), startTime: Value(_date(r['startTime'])), endTime: Value(_date(r['endTime'])), updatedAt: Value(remoteUpdated),
       ));
-      return _MergeOutcome(local.id, true, false);
+      return _MergeOutcome(local!.id, true, false);
     }
-    return _MergeOutcome(local.id, false, false);
+    return _MergeOutcome(local!.id, false, false);
   }
 
   Future<_MergeOutcome> _mergeInventory(Map<String, dynamic> r) async {
@@ -461,13 +461,13 @@ class SyncService {
       return _MergeOutcome(id, true, false);
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
-      await (db.update(db.inventoryItems)..where((t) => t.id.equals(local.id))).write(InventoryItemsCompanion(
+      await (db.update(db.inventoryItems)..where((t) => t.id.equals(local!.id))).write(InventoryItemsCompanion(
         barcode: Value(r['barcode']), name: Value(r['name']), color: Value(r['color']), brand: Value(r['brand']), category: Value(r['category']), unit: Value(r['unit']),
         packSize: Value(r['packSize']), minStock: Value((r['minStock'] as num).toDouble()), updatedAt: Value(remoteUpdated),
       ));
-      return _MergeOutcome(local.id, true, false);
+      return _MergeOutcome(local!.id, true, false);
     }
-    return _MergeOutcome(local.id, false, false);
+    return _MergeOutcome(local!.id, false, false);
   }
 
   Future<_MergeOutcome> _mergePlan(Map<String, dynamic> r, Map<String, int> users) async {
@@ -484,13 +484,13 @@ class SyncService {
       return _MergeOutcome(id, true, false);
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
-      await (db.update(db.maintenancePlans)..where((t) => t.id.equals(local.id))).write(MaintenancePlansCompanion(
+      await (db.update(db.maintenancePlans)..where((t) => t.id.equals(local!.id))).write(MaintenancePlansCompanion(
         title: Value(r['title']), description: Value(r['description']), intervalDays: Value(r['intervalDays']), lastDoneDate: Value(_date(r['lastDoneDate'])), nextDueDate: Value(_date(r['nextDueDate'])),
         responsibleRole: Value(r['responsibleRole']), isActive: Value(r['isActive']), createdBy: Value(createdBy), updatedAt: Value(remoteUpdated),
       ));
-      return _MergeOutcome(local.id, true, false);
+      return _MergeOutcome(local!.id, true, false);
     }
-    return _MergeOutcome(local.id, false, false);
+    return _MergeOutcome(local!.id, false, false);
   }
 
   Future<bool> _mergeAssignment(Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
@@ -525,7 +525,7 @@ class SyncService {
     final jobId = jobs[r['jobSyncId']];
     final uploader = users[r['uploadedBySyncId']];
     if (jobId == null || uploader == null) return false;
-    final path = await _savePhotoBytes(sid, r['photoBase64'] as String?, '');
+    final path = await _savePhotoBytes(sid, r['photoBase64'] as String?, r['photoPath'] as String? ?? '');
     if (local == null) {
       await db.into(db.jobPhotos).insert(JobPhotosCompanion.insert(
         syncId: Value(sid),
@@ -541,7 +541,7 @@ class SyncService {
       return true;
     }
     if (remoteUpdated.isAfter(local.updatedAt)) {
-      await (db.update(db.jobPhotos)..where((t) => t.id.equals(local.id))).write(JobPhotosCompanion(
+      await (db.update(db.jobPhotos)..where((t) => t.id.equals(local!.id))).write(JobPhotosCompanion(
         jobId: Value(jobId),
         photoPath: Value(path),
         uploadedBy: Value(uploader),
@@ -555,30 +555,6 @@ class SyncService {
     return false;
   }
 
-  Future<bool> _mergeComment(
-    Map<String, dynamic> r,
-    Map<String, int> jobs,
-    Map<String, int> users,
-  ) async {
-    final sid = r['syncId'] as String;
-    final jobId = jobs[r['jobSyncId']];
-    final userId = users[r['userSyncId']];
-    if (jobId == null || userId == null) return false;
-
-    final local = await (db.select(db.jobComments)
-          ..where((t) => t.syncId.equals(sid)))
-        .getSingleOrNull();
-    if (local != null) return false;
-
-    await db.into(db.jobComments).insert(JobCommentsCompanion.insert(
-      syncId: Value(sid),
-      jobId: jobId,
-      userId: userId,
-      comment: r['comment'] as String,
-      createdAt: Value(DateTime.parse(r['createdAt'] as String)),
-    ));
-    return true;
-  }
   Future<bool> _mergeMovement(Map<String, dynamic> r, Map<String, int> inventory, Map<String, int> users) async {
     final sid = r['syncId'] as String;
     final local = await (db.select(db.stockMovements)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
