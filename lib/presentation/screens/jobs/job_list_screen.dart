@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/labels.dart';
 import 'create_job_screen.dart';
 import 'job_detail_screen.dart';
 
@@ -19,6 +20,7 @@ class JobListScreen extends ConsumerWidget {
           if (['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(currentUser.role))
             IconButton(
               icon: const Icon(Icons.add),
+              tooltip: 'Yeni İş',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -42,7 +44,8 @@ class JobListScreen extends ConsumerWidget {
                 child: ListTile(
                   title: Text(job.title),
                   subtitle: Text(
-                    'Durum: ${job.status} | Öncelik: ${job.priority}'
+                    'Durum: ${Labels.jobStatus(job.status)}'
+                    ' | Öncelik: ${Labels.priority(job.priority)}'
                     '${job.location != null ? " | ${job.location}" : ""}',
                   ),
                   trailing: _StatusChip(status: job.status),
@@ -52,7 +55,11 @@ class JobListScreen extends ConsumerWidget {
                       MaterialPageRoute(
                         builder: (_) => JobDetailScreen(jobId: job.id),
                       ),
-                    ).then((_) => ref.invalidate(jobsProvider));
+                    ).then((_) {
+                      ref.invalidate(jobsProvider);
+                      ref.invalidate(jobPhotosProvider(job.id));
+                      ref.invalidate(jobCommentsProvider(job.id));
+                    });
                   },
                 ),
               );
@@ -90,7 +97,10 @@ class _StatusChip extends StatelessWidget {
         color = Colors.grey;
     }
     return Chip(
-      label: Text(status, style: const TextStyle(color: Colors.white, fontSize: 11)),
+      label: Text(
+        Labels.jobStatus(status),
+        style: const TextStyle(color: Colors.white, fontSize: 11),
+      ),
       backgroundColor: color,
       padding: EdgeInsets.zero,
     );

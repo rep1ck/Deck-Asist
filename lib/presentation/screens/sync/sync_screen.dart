@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../services/sync_service.dart';
+import '../../../services/archive_service.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});
@@ -39,6 +42,80 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     });
 
     if (result.success) _invalidateData();
+  }
+
+
+
+  Future<void> _weeklyArchive() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('14 günlük arşiv uyarısı'),
+        content: const Text(
+          '14 günden eski tamamlanmış / onaylanmış işlerin fotoğraf ve yorumları '
+          'zip dosyasına alınır ve uygulamadan SİLİNİR.
+
+'
+          'İş kaydında yalnızca başlık, durum, başlangıç ve bitiş bilgisi kalır.
+
+'
+          'Bu işlem geri alınamaz. Devam edilsin mi?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Anladım, arşivle'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() {
+      _isSyncing = true;
+      _status = 'Arşiv oluşturuluyor...';
+    });
+    final archive = ArchiveService(ref.read(databaseProvider));
+    final result = await archive.archiveCompletedJobs(olderThanDays: 14);
+    if (!mounted) return;
+    setState(() {
+      _isSyncing = false;
+      _status = result.message;
+    });
+    if (result.zipPath == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+      }
+      return;
+    }
+    final share = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Arşiv hazır'),
+        content: Text(result.message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, 'open'), child: const Text('Dosyayı aç')),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'email'),
+            icon: const Icon(Icons.email),
+            label: const Text('E-posta ile paylaş'),
+          ),
+        ],
+      ),
+    );
+    if (share == 'open') {
+      await OpenFilex.open(result.zipPath!);
+    } else if (share == 'email') {
+      await Share.shareXFiles(
+        [XFile(result.zipPath!)],
+        subject: 'Deck Asist haftalık arşiv',
+        text: 'Deck Asist 14 günlük fotoğraf ve yorum arşivi ektedir.
+
+rep1ck & BY',
+      );
+    }
+    ref.invalidate(jobsProvider);
   }
 
   void _invalidateData() {

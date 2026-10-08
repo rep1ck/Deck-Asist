@@ -14,6 +14,7 @@ part 'app_database.g.dart';
   Jobs,
   JobAssignments,
   JobPhotos,
+  JobComments,
   InventoryItems,
   StockMovements,
   MaintenancePlans,
@@ -25,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -49,6 +50,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(maintenancePlans, maintenancePlans.updatedAt);
             await m.addColumn(maintenanceRecords, maintenanceRecords.syncId);
             await ensureSyncIds();
+          }
+          if (from < 3) {
+            await m.createTable(jobComments);
           }
         },
       );
@@ -201,6 +205,10 @@ class AppDatabase extends _$AppDatabase {
     final photoRows = await select(jobPhotos).get();
     for (final r in photoRows) {
       if (r.syncId == null || r.syncId!.isEmpty) await (update(jobPhotos)..where((t) => t.id.equals(r.id))).write(JobPhotosCompanion(syncId: Value(await make('photos', r.id))));
+    }
+    final commentRows = await select(jobComments).get();
+    for (final r in commentRows) {
+      if (r.syncId == null || r.syncId!.isEmpty) await (update(jobComments)..where((t) => t.id.equals(r.id))).write(JobCommentsCompanion(syncId: Value(await make('comments', r.id))));
     }
     final inventoryRows = await select(inventoryItems).get();
     for (final r in inventoryRows) {

@@ -33,7 +33,6 @@ class InventoryService {
         .getSingle();
 
     double newStock = item.currentStock;
-
     if (movementType == 'GIRIS') {
       newStock += quantity;
     } else if (movementType == 'CIKIS') {
@@ -41,7 +40,6 @@ class InventoryService {
     } else if (movementType == 'SAYIM' || movementType == 'DUZELTME') {
       newStock = quantity;
     }
-
     if (newStock < 0) newStock = 0;
 
     await (db.update(db.inventoryItems)..where((t) => t.id.equals(itemId)))
@@ -72,5 +70,37 @@ class InventoryService {
             minStock: Value(minStock),
           ),
         );
+  }
+
+  Future<bool> updateItem({
+    required int itemId,
+    required String barcode,
+    required String name,
+    String? color,
+    String? category,
+    String? unit,
+    String? packSize,
+    double? minStock,
+  }) async {
+    final trimmed = barcode.trim();
+    if (trimmed.isEmpty || name.trim().isEmpty) return false;
+
+    final conflict = await (db.select(db.inventoryItems)
+          ..where((t) => t.barcode.equals(trimmed) & t.id.isNotValue(itemId)))
+        .getSingleOrNull();
+    if (conflict != null) return false;
+
+    await (db.update(db.inventoryItems)..where((t) => t.id.equals(itemId)))
+        .write(InventoryItemsCompanion(
+      barcode: Value(trimmed),
+      name: Value(name.trim()),
+      color: Value(color),
+      category: category != null ? Value(category) : const Value.absent(),
+      unit: unit != null ? Value(unit) : const Value.absent(),
+      packSize: Value(packSize),
+      minStock: minStock != null ? Value(minStock) : const Value.absent(),
+      updatedAt: Value(DateTime.now()),
+    ));
+    return true;
   }
 }

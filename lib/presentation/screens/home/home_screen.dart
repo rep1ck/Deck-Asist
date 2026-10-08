@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/labels.dart';
 import '../auth/login_screen.dart';
 import '../inventory/inventory_list_screen.dart';
 import '../jobs/job_list_screen.dart';
@@ -36,7 +37,7 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Center(
               child: Text(
-                '${user.fullName} (${user.role})',
+                '${user.fullName} • ${Labels.role(user.role)}',
                 style: const TextStyle(fontSize: 13),
               ),
             ),
@@ -131,6 +132,16 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+      bottomNavigationBar: const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: Text(
+            'Deck Asist • Geliştiren: rep1ck & BY',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.black45),
+          ),
+        ),
       ),
     );
   }

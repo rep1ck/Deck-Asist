@@ -76,3 +76,12 @@ final stockMovementsProvider =
         ..orderBy([(t) => OrderingTerm.desc(t.movementDate)]))
       .get();
 });
+
+final jobCommentsProvider =
+    FutureProvider.autoDispose.family<List<JobComment>, int>((ref, jobId) async {
+  final db = ref.watch(databaseProvider);
+  return await (db.select(db.jobComments)
+        ..where((c) => c.jobId.equals(jobId))
+        ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+      .get();
+});

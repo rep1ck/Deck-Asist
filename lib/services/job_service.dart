@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:image/image.dart' as img;
 import 'package:drift/drift.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../data/database/app_database.dart';
 import 'notification_service.dart';
 import '../core/utils/sync_identity.dart';
@@ -78,18 +82,52 @@ class JobService {
     }
   }
 
+  /// Fotoğrafı kalıcı kaydeder; boyut küçültülür (görüntü bozulmadan ~JPEG 65, max 1280px).
+  Future<String> _persistPhoto(String sourcePath) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final photoDir = Directory(p.join(dir.path, 'job_photos'));
+    if (!await photoDir.exists()) await photoDir.create(recursive: true);
+    final dest = p.join(
+      photoDir.path,
+      '${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+    try {
+      final bytes = await File(sourcePath).readAsBytes();
+      // image package ile yeniden boyutlandır + sıkıştır
+      final decoded = img.decodeImage(bytes);
+      if (decoded != null) {
+        var out = decoded;
+        const maxSide = 1280;
+        if (out.width > maxSide || out.height > maxSide) {
+          out = img.copyResize(
+            out,
+            width: out.width >= out.height ? maxSide : null,
+            height: out.height > out.width ? maxSide : null,
+          );
+        }
+        final jpg = img.encodeJpg(out, quality: 65);
+        await File(dest).writeAsBytes(jpg, flush: true);
+        return dest;
+      }
+    } catch (_) {}
+    await File(sourcePath).copy(dest);
+    return dest;
+  }
+
   Future<void> addPhoto({
     required int jobId,
     required String photoPath,
     required int uploadedById,
     String? description,
   }) async {
+    final permanentPath = await _persistPhoto(photoPath);
     await db.into(db.jobPhotos).insert(JobPhotosCompanion.insert(
           syncId: Value(SyncIdentity.newId()),
           jobId: jobId,
-          photoPath: photoPath,
+          photoPath: permanentPath,
           uploadedBy: uploadedById,
           description: Value(description),
+          approvalStatus: const Value('APPROVED'),
         ));
   }
 
@@ -105,5 +143,27 @@ class JobService {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  Future<void> addComment({
+    required int jobId,
+    required int userId,
+    required String comment,
+  }) async {
+    final text = comment.trim();
+    if (text.isEmpty) return;
+    await db.into(db.jobComments).insert(JobCommentsCompanion.insert(
+          syncId: Value(SyncIdentity.newId()),
+          jobId: jobId,
+          userId: userId,
+          comment: text,
+        ));
+  }
+
+  Future<List<JobComment>> getComments(int jobId) async {
+    return await (db.select(db.jobComments)
+          ..where((c) => c.jobId.equals(jobId))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../data/database/app_database.dart';
 import '../../../services/inventory_service.dart';
+import '../../../core/utils/labels.dart';
 
 class StockMovementScreen extends ConsumerStatefulWidget {
   final InventoryItem item;

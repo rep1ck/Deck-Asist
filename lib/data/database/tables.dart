@@ -55,6 +55,17 @@ class JobPhotos extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+
+@DataClassName('JobComment')
+class JobComments extends Table {
+  TextColumn get syncId => text().nullable()();
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get jobId => integer()();
+  IntColumn get userId => integer()();
+  TextColumn get comment => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 @DataClassName('InventoryItem')
 class InventoryItems extends Table {
   TextColumn get syncId => text().nullable()();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/labels.dart';
 import '../../../services/job_service.dart';
 
 class CreateJobScreen extends ConsumerStatefulWidget {
@@ -88,9 +89,12 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
                 labelText: 'Öncelik',
                 border: OutlineInputBorder(),
               ),
-              items: ['LOW', 'NORMAL', 'HIGH', 'URGENT']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
+              items: const [
+                DropdownMenuItem(value: 'LOW', child: Text('Düşük')),
+                DropdownMenuItem(value: 'NORMAL', child: Text('Normal')),
+                DropdownMenuItem(value: 'HIGH', child: Text('Yüksek')),
+                DropdownMenuItem(value: 'URGENT', child: Text('Acil')),
+              ],
               onChanged: (v) => setState(() => _priority = v!),
             ),
             const SizedBox(height: 16),

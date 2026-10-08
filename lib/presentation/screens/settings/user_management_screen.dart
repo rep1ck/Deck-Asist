@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/labels.dart';
 
 class UserManagementScreen extends ConsumerWidget {
   const UserManagementScreen({super.key});
@@ -38,7 +39,7 @@ class UserManagementScreen extends ConsumerWidget {
               final isRoot = user.username == 'root@zeynepc.arkas';
               return ListTile(
                 title: Text(user.fullName),
-                subtitle: Text('${user.username} • ${user.role}'),
+                subtitle: Text('${user.username} • ${Labels.role(user.role)}'),
                 trailing: isRoot
                     ? const Chip(label: Text('ROOT'))
                     : IconButton(

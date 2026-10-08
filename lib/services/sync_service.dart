@@ -35,7 +35,7 @@ class SyncResult {
 class SyncService {
   static const int httpPort = 8787;
   static const int discoveryPort = 8788;
-  static const String protocol = 'deck-asist-v3';
+  static const String protocol = 'deck-asist-v4';
 
   final AppDatabase db;
   HttpServer? _server;
@@ -245,6 +245,7 @@ class SyncService {
     final jobs = await db.select(db.jobs).get();
     final assignments = await db.select(db.jobAssignments).get();
     final photos = await db.select(db.jobPhotos).get();
+    final comments = await db.select(db.jobComments).get();
     final inventory = await db.select(db.inventoryItems).get();
     final movements = await db.select(db.stockMovements).get();
     final plans = await db.select(db.maintenancePlans).get();
@@ -279,7 +280,7 @@ class SyncService {
               if (await f.exists()) {
                 final bytes = await f.readAsBytes();
                 // Limit ~1.5MB per photo for LAN transfer
-                if (bytes.length <= 1500000) {
+                if (bytes.length <= 800000) {
                   b64 = base64Encode(bytes);
                 }
               }
@@ -297,6 +298,13 @@ class SyncService {
               'updatedAt': x.updatedAt.toUtc().toIso8601String(),
             };
           })),
+      'jobComments': comments.map((x) => {
+            'syncId': x.syncId,
+            'jobSyncId': jobById[x.jobId],
+            'userSyncId': userById[x.userId],
+            'comment': x.comment,
+            'createdAt': x.createdAt.toUtc().toIso8601String(),
+          }).toList(),
       'inventoryItems': inventory.map((x) => {
             'syncId': x.syncId, 'barcode': x.barcode, 'name': x.name, 'color': x.color, 'brand': x.brand, 'category': x.category,
             'unit': x.unit, 'packSize': x.packSize, 'currentStock': x.currentStock, 'minStock': x.minStock,
@@ -361,6 +369,9 @@ class SyncService {
     }
     for (final r in _list(incoming['jobPhotos'])) {
       if (jobs[r['jobSyncId']] != null && users[r['uploadedBySyncId']] != null && await _mergePhoto(r, jobs, users)) merged++;
+    }
+    for (final r in _list(incoming['jobComments'])) {
+      if (jobs[r['jobSyncId']] != null && users[r['userSyncId']] != null && await _mergeComment(r, jobs, users)) merged++;
     }
     for (final r in _list(incoming['stockMovements'])) {
       if (inventory[r['itemSyncId']] != null && users[r['userSyncId']] != null && await _mergeMovement(r, inventory, users)) merged++;

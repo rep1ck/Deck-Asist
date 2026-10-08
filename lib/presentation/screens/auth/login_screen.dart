@@ -106,7 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Root: root@zeynepc.arkas',
+                'Deck Asist • rep1ck & BY',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
