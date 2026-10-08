@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/providers.dart';
-import '../../../services/sync_service.dart';
-import '../../../services/archive_service.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/providers.dart';
+import '../../../services/archive_service.dart';
+import '../../../services/sync_service.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});
@@ -44,8 +44,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     if (result.success) _invalidateData();
   }
 
-
-
   Future<void> _weeklyArchive() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -53,16 +51,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
         title: const Text('14 günlük arşiv uyarısı'),
         content: const Text(
           '14 günden eski tamamlanmış / onaylanmış işlerin fotoğraf ve yorumları '
-          'zip dosyasına alınır ve uygulamadan SİLİNİR.
-
-'
-          'İş kaydında yalnızca başlık, durum, başlangıç ve bitiş bilgisi kalır.
-
-'
+          'zip dosyasına alınır ve uygulamadan SİLİNİR.\n\n'
+          'İş kaydında yalnızca başlık, durum, başlangıç ve bitiş bilgisi kalır.\n\n'
           'Bu işlem geri alınamaz. Devam edilsin mi?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
             onPressed: () => Navigator.pop(ctx, true),
@@ -72,30 +69,38 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
       ),
     );
     if (confirm != true) return;
+
     setState(() {
       _isSyncing = true;
       _status = 'Arşiv oluşturuluyor...';
     });
+
     final archive = ArchiveService(ref.read(databaseProvider));
     final result = await archive.archiveCompletedJobs(olderThanDays: 14);
     if (!mounted) return;
+
     setState(() {
       _isSyncing = false;
       _status = result.message;
     });
+
     if (result.zipPath == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message)),
+      );
       return;
     }
+
     final share = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Arşiv hazır'),
         content: Text(result.message),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, 'open'), child: const Text('Dosyayı aç')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'open'),
+            child: const Text('Dosyayı aç'),
+          ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, 'email'),
             icon: const Icon(Icons.email),
@@ -104,15 +109,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
         ],
       ),
     );
+
     if (share == 'open') {
       await OpenFilex.open(result.zipPath!);
     } else if (share == 'email') {
       await Share.shareXFiles(
         [XFile(result.zipPath!)],
         subject: 'Deck Asist haftalık arşiv',
-        text: 'Deck Asist 14 günlük fotoğraf ve yorum arşivi ektedir.
-
-rep1ck & BY',
+        text:
+            'Deck Asist 14 günlük fotoğraf ve yorum arşivi ektedir.\n\nrep1ck & BY',
       );
     }
     ref.invalidate(jobsProvider);
@@ -141,17 +146,33 @@ rep1ck & BY',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(children: [
-                      Icon(Icons.wifi, size: 28),
-                      SizedBox(width: 10),
-                      Expanded(child: Text('Otomatik LAN senkronizasyonu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-                    ]),
+                    const Row(
+                      children: [
+                        Icon(Icons.wifi, size: 28),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Otomatik LAN senkronizasyonu',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
-                    const Text('Aynı Wi-Fi ağına bağlı çalışan Deck Asist cihazları birbirini otomatik bulur. İnternet veya merkezi sunucu gerekmez.'),
+                    const Text(
+                      'Aynı Wi-Fi ağına bağlı çalışan Deck Asist cihazları '
+                      'birbirini otomatik bulur. İnternet veya merkezi sunucu gerekmez.',
+                    ),
                     const SizedBox(height: 12),
                     FutureBuilder<String>(
                       future: service.deviceId,
-                      builder: (_, snapshot) => Text('Bu cihaz: ${snapshot.data ?? '...'}', style: Theme.of(context).textTheme.bodySmall),
+                      builder: (_, snapshot) => Text(
+                        'Bu cihaz: ${snapshot.data ?? '...'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                   ],
                 ),
@@ -161,23 +182,54 @@ rep1ck & BY',
             FilledButton.icon(
               onPressed: _isSyncing ? null : _discoverAndSync,
               icon: _isSyncing
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.sync),
-              label: Text(_isSyncing ? 'Senkronize ediliyor...' : 'Şimdi Senkronize Et'),
+              label: Text(
+                _isSyncing ? 'Senkronize ediliyor...' : 'Şimdi Senkronize Et',
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _isSyncing ? null : _weeklyArchive,
+              icon: const Icon(Icons.archive),
+              label: const Text('14 günlük arşiv (foto + yorum → zip)'),
             ),
             const SizedBox(height: 20),
             Text('Durum', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
             Text(_status),
             const SizedBox(height: 20),
-            Text('Bulunan cihazlar (${_peers.length})', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Bulunan cihazlar (${_peers.length})',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             if (_peers.isEmpty)
-              const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Henüz başka Deck Asist cihazı bulunamadı. Diğer cihazda da uygulamanın açık olduğundan ve aynı Wi-Fi ağında olduğundan emin olun.')))
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Henüz başka Deck Asist cihazı bulunamadı. Diğer cihazda da '
+                    'uygulamanın açık olduğundan ve aynı Wi-Fi ağında olduğundan emin olun.',
+                  ),
+                ),
+              )
             else
-              ..._peers.map((peer) => ListTile(leading: const Icon(Icons.devices), title: Text(peer))),
+              ..._peers.map(
+                (peer) => ListTile(
+                  leading: const Icon(Icons.devices),
+                  title: Text(peer),
+                ),
+              ),
             const SizedBox(height: 16),
-            const Text('Senkronizasyon kapsamı: kullanıcılar, işler, atamalar, fotoğraf kayıtları, stoklar, stok hareketleri, bakım planları ve bakım kayıtları. Değişen kayıtlar güncelleme zamanı ile birleştirilir.'),
+            const Text(
+              'Senkron: kullanıcılar, işler, atamalar, fotoğraflar, yorumlar, '
+              'stoklar, stok hareketleri, bakım planları ve kayıtları.',
+            ),
           ],
         ),
       ),
