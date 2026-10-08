@@ -420,9 +420,9 @@ class SyncService {
         username: Value(r['username']), fullName: Value(r['fullName']), role: Value(r['role']),
         isActive: const Value(0), canManageUsers: Value(r['canManageUsers']), lastLogin: Value(r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'])), updatedAt: Value(remoteUpdated),
       ));
-      return _MergeOutcome(local!.id, true, false);
+      return _MergeOutcome(local.id, true, false);
     }
-    return _MergeOutcome(local!.id, false, remoteUpdated != local.updatedAt);
+    return _MergeOutcome(local.id, false, remoteUpdated != local.updatedAt);
   }
 
   Future<_MergeOutcome> _mergeJob(Map<String, dynamic> r, Map<String, int> users) async {
@@ -465,9 +465,9 @@ class SyncService {
         barcode: Value(r['barcode']), name: Value(r['name']), color: Value(r['color']), brand: Value(r['brand']), category: Value(r['category']), unit: Value(r['unit']),
         packSize: Value(r['packSize']), minStock: Value((r['minStock'] as num).toDouble()), updatedAt: Value(remoteUpdated),
       ));
-      return _MergeOutcome(local!.id, true, false);
+      return _MergeOutcome(local.id, true, false);
     }
-    return _MergeOutcome(local!.id, false, false);
+    return _MergeOutcome(local.id, false, false);
   }
 
   Future<_MergeOutcome> _mergePlan(Map<String, dynamic> r, Map<String, int> users) async {
