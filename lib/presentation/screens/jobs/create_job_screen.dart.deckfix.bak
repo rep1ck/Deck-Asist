@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/labels.dart';
 import '../../../services/job_service.dart';
 
 class CreateJobScreen extends ConsumerStatefulWidget {

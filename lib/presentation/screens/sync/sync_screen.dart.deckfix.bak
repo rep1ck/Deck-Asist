@@ -4,6 +4,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/providers.dart';
 import '../../../services/archive_service.dart';
+import '../../../services/sync_service.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});

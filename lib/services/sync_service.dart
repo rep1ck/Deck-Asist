@@ -416,9 +416,6 @@ class SyncService {
       return _MergeOutcome(id, true, false);
     }
     final current = local;
-    if (current == null) {
-      throw StateError('Kullanici birlestirme durumu gecersiz.');
-    }
     if (remoteUpdated.isAfter(current.updatedAt)) {
       await (db.update(db.users)..where((t) => t.id.equals(current.id))).write(UsersCompanion(
         syncId: Value(sid), username: Value(r['username']), fullName: Value(r['fullName']), role: Value(r['role']),
@@ -465,9 +462,6 @@ class SyncService {
       return _MergeOutcome(id, true, false);
     }
     final current = local;
-    if (current == null) {
-      throw StateError('Stok kalemi birlestirme durumu gecersiz.');
-    }
     if (remoteUpdated.isAfter(current.updatedAt)) {
       await (db.update(db.inventoryItems)..where((t) => t.id.equals(current.id))).write(InventoryItemsCompanion(
         syncId: Value(sid), barcode: Value(r['barcode']), name: Value(r['name']), color: Value(r['color']), brand: Value(r['brand']), category: Value(r['category']), unit: Value(r['unit']),
