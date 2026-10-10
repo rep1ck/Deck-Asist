@@ -1,5 +1,5 @@
 name: deck_asist
-description: Deck Asist - Güverte Yönetim Sistemi
+description: Deck Asist - Guverte Yonetim Sistemi
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -26,6 +26,7 @@ dependencies:
   image: ^4.2.0
   archive: ^3.6.1
   share_plus: ^10.0.2
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
