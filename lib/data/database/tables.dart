@@ -7,7 +7,7 @@ class Users extends Table {
   TextColumn get username => text().unique()();
   TextColumn get passwordHash => text()();
   TextColumn get fullName => text()();
-  TextColumn get role => text()(); // ROOT, MASTER, SECOND, REIS, PERSONEL, INSPECTOR
+  TextColumn get role => text()();
   IntColumn get isActive => integer().withDefault(const Constant(1))();
   IntColumn get canManageUsers => integer().withDefault(const Constant(0))();
   IntColumn get createdBy => integer().nullable()();
@@ -55,7 +55,6 @@ class JobPhotos extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-
 @DataClassName('JobComment')
 class JobComments extends Table {
   TextColumn get syncId => text().nullable()();
@@ -74,9 +73,10 @@ class InventoryItems extends Table {
   TextColumn get name => text()();
   TextColumn get color => text().nullable()();
   TextColumn get brand => text().withDefault(const Constant('Akzo Nobel / International'))();
-  TextColumn get category => text()(); // BOYA, RASPA, KABIN, DIGER
+  TextColumn get category => text()();
   TextColumn get unit => text().withDefault(const Constant('Lt'))();
   TextColumn get packSize => text().nullable()();
+  RealColumn get unitsPerPack => real().withDefault(const Constant(1.0))();
   RealColumn get currentStock => real().withDefault(const Constant(0.0))();
   RealColumn get minStock => real().withDefault(const Constant(0.0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -88,7 +88,7 @@ class StockMovements extends Table {
   TextColumn get syncId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   IntColumn get itemId => integer()();
-  TextColumn get movementType => text()(); // GIRIS, CIKIS, SAYIM, DUZELTME
+  TextColumn get movementType => text()();
   RealColumn get quantity => real()();
   IntColumn get userId => integer()();
   TextColumn get note => text().nullable()();
