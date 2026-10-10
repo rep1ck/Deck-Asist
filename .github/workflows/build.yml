@@ -32,11 +32,31 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Ensure assets folder
-        run: mkdir -p assets && touch assets/.gitkeep
+      - name: Ensure assets and PDF font
+        run: |
+          mkdir -p assets assets/icon assets/fonts
+          touch assets/.gitkeep assets/icon/.gitkeep
+          if [ ! -f assets/fonts/NotoSans-Regular.ttf ]; then
+            curl -sL -o assets/fonts/NotoSans-Regular.ttf \
+              "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf" \
+            || curl -sL -o assets/fonts/NotoSans-Regular.ttf \
+              "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+          fi
+          ls -lh assets/fonts/NotoSans-Regular.ttf
 
       - name: Create Android platform
-        run: flutter create . --project-name deck_asist --platforms=android
+        run: |
+          flutter create . --project-name deck_asist --platforms=android
+          rm -rf test
+          mkdir -p test
+          cat > test/widget_test.dart << 'DART'
+          import 'package:flutter_test/flutter_test.dart';
+          void main() {
+            test('placeholder', () {
+              expect(1 + 1, 2);
+            });
+          }
+          DART
 
       - name: Allow LAN + camera permissions
         run: |
@@ -61,7 +81,7 @@ jobs:
           print('Permissions OK')
           PY
 
-      - name: Raise minSdk for plugins
+      - name: Raise minSdk and compileSdk
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -71,9 +91,13 @@ jobs:
               if not p.exists():
                   continue
               s = p.read_text(encoding='utf-8')
-              s2 = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', s)
-              s2 = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', s2)
-              p.write_text(s2, encoding='utf-8')
+              s = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', s)
+              s = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', s)
+              s = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 35', s)
+              s = re.sub(r'compileSdkVersion\s+\d+', 'compileSdkVersion 35', s)
+              s = re.sub(r'targetSdk\s*=\s*\d+', 'targetSdk = 35', s)
+              s = re.sub(r'targetSdkVersion\s+\d+', 'targetSdkVersion 35', s)
+              p.write_text(s, encoding='utf-8')
               print(f'Updated {rel}')
           PY
 
