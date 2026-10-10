@@ -5,6 +5,7 @@ import 'data/database/app_database.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'services/sync_service.dart';
+import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,6 @@ void main() async {
   try {
     await sync.start();
   } catch (_) {
-    // The app remains usable even if the LAN listener cannot be opened.
   }
   runApp(ProviderScope(
     overrides: [
@@ -57,10 +57,7 @@ class _DeckMasterAppState extends ConsumerState<DeckMasterApp> with WidgetsBindi
     return MaterialApp(
       title: 'Deck Asist',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: const SplashScreen(),
     );
   }
