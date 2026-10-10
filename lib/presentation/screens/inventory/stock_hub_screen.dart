@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/labels.dart';
+import 'add_inventory_item_screen.dart';
 import 'barcode_scan_screen.dart';
+import 'inventory_import_screen.dart';
 import 'inventory_list_screen.dart';
 
-/// Stok / Sayim ana menu — kategoriler + tum stok
 class StockHubScreen extends ConsumerWidget {
   const StockHubScreen({super.key});
 
@@ -22,6 +23,10 @@ class StockHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider)!;
+    final canImport =
+        ['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(user.role);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Stok / Sayim'),
@@ -41,6 +46,44 @@ class StockHubScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (canImport) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const InventoryImportScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.upload_file, size: 18),
+                    label: const Text('Excel Import'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddInventoryItemScreen(
+                            initialBarcode: '',
+                          ),
+                        ),
+                      ).then((_) => ref.invalidate(inventoryProvider));
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Elle giris'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           const Text(
             'Kategori secin',
             style: TextStyle(
