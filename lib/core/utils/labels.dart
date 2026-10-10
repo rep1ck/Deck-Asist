@@ -1,4 +1,4 @@
-/// Türkçe etiketler – durum, öncelik, stok hareketi
+/// Türkçe etiketler – durum, öncelik, stok, kategori, birim
 class Labels {
   static String jobStatus(String status) {
     switch (status) {
@@ -70,14 +70,53 @@ class Labels {
     switch (c) {
       case 'BOYA':
         return 'Boya';
-      case 'RASPA':
-        return 'Raspa';
+      case 'KUMANYA':
+        return 'Kumanya';
       case 'KABIN':
-        return 'Kabin';
+        return 'Kabin Malzemeleri';
+      case 'RASPA':
+        return 'Raspa / Boya Yardımcı';
+      case 'EL_ALETI':
+        return 'Elektrikli / El Aleti';
+      case 'KKD':
+        return 'KKD (Gözlük, Eldiven vb.)';
       case 'DIGER':
         return 'Diğer';
       default:
         return c;
+    }
+  }
+
+  static const categoryValues = [
+    'BOYA',
+    'KUMANYA',
+    'KABIN',
+    'RASPA',
+    'EL_ALETI',
+    'KKD',
+    'DIGER',
+  ];
+
+  static const unitValues = ['Lt', 'Kg', 'Adet', 'Kutu', 'Paket', 'Metre', 'Çift'];
+
+  static String unit(String u) {
+    switch (u) {
+      case 'Lt':
+        return 'Lt (Litre)';
+      case 'Kg':
+        return 'Kg';
+      case 'Adet':
+        return 'Adet';
+      case 'Kutu':
+        return 'Kutu';
+      case 'Paket':
+        return 'Paket';
+      case 'Metre':
+        return 'Metre';
+      case 'Çift':
+        return 'Çift';
+      default:
+        return u;
     }
   }
 }
