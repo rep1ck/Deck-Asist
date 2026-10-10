@@ -7,7 +7,14 @@ import 'edit_inventory_item_screen.dart';
 import 'stock_movement_screen.dart';
 
 class InventoryListScreen extends ConsumerWidget {
-  const InventoryListScreen({super.key});
+  final String? categoryFilter;
+  final String title;
+
+  const InventoryListScreen({
+    super.key,
+    this.categoryFilter,
+    this.title = 'Stok Listesi',
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,7 +24,7 @@ class InventoryListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stok / Boya'),
+        title: Text(title),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -33,14 +40,25 @@ class InventoryListScreen extends ConsumerWidget {
       ),
       body: inventoryAsync.when(
         data: (items) {
-          if (items.isEmpty) {
-            return const Center(child: Text('Stok kaydı yok'));
+          final filtered = categoryFilter == null
+              ? items
+              : items.where((i) => i.category == categoryFilter).toList();
+
+          if (filtered.isEmpty) {
+            return Center(
+              child: Text(
+                categoryFilter == null
+                    ? 'Stok kaydi yok'
+                    : '${Labels.category(categoryFilter!)} kategorisinde urun yok',
+              ),
+            );
           }
+
           return ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: items.length,
+            itemCount: filtered.length,
             itemBuilder: (context, index) {
-              final item = items[index];
+              final item = filtered[index];
               final isLow =
                   item.currentStock <= item.minStock && item.minStock > 0;
               return Card(
@@ -59,17 +77,23 @@ class InventoryListScreen extends ConsumerWidget {
                     children: [
                       if (isLow)
                         const Icon(Icons.warning, color: Colors.red, size: 20),
-                      PopupMenuButton<String>(
-                        onSelected: (v) {
-                          if (v == 'move') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    StockMovementScreen(item: item),
-                              ),
-                            ).then((_) => ref.invalidate(inventoryProvider));
-                          } else if (v == 'edit' && canEdit) {
+                      IconButton(
+                        icon: const Icon(Icons.swap_vert),
+                        tooltip: 'Stok hareketi',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => StockMovementScreen(item: item),
+                            ),
+                          ).then((_) => ref.invalidate(inventoryProvider));
+                        },
+                      ),
+                      if (canEdit)
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          tooltip: 'Duzenle',
+                          onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -77,47 +101,17 @@ class InventoryListScreen extends ConsumerWidget {
                                     EditInventoryItemScreen(item: item),
                               ),
                             ).then((_) => ref.invalidate(inventoryProvider));
-                          }
-                        },
-                        itemBuilder: (ctx) => [
-                          const PopupMenuItem(
-                            value: 'move',
-                            child: Text('Stok hareketi'),
-                          ),
-                          if (canEdit)
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Text('Düzenle'),
-                            ),
-                        ],
-                      ),
+                          },
+                        ),
                     ],
                   ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => StockMovementScreen(item: item),
-                      ),
-                    ).then((_) => ref.invalidate(inventoryProvider));
-                  },
                 ),
               );
             },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text('Hata: $e')),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
-          ).then((_) => ref.invalidate(inventoryProvider));
-        },
-        icon: const Icon(Icons.qr_code_scanner),
-        label: const Text('Barkod Okut'),
+        error: (e, _) => Center(child: Text('Hata: $e')),
       ),
     );
   }
