@@ -109,4 +109,116 @@ class InventoryService {
     ));
     return true;
   }
+
+  Future<({int added, int updated, int skipped, List<String> errors})>
+      importFromExcelRows(List<List<String>> rows) async {
+    int added = 0, updated = 0, skipped = 0;
+    final errors = <String>[];
+    if (rows.isEmpty) {
+      return (added: 0, updated: 0, skipped: 0, errors: ['Bos dosya']);
+    }
+
+    var start = 0;
+    final h0 = rows.first.isNotEmpty ? rows.first[0].toLowerCase().trim() : '';
+    if (h0.contains('barkod') || h0.contains('barcode')) {
+      start = 1;
+    }
+
+    for (var i = start; i < rows.length; i++) {
+      final row = rows[i];
+      if (row.isEmpty) continue;
+      final barcode = row[0].trim();
+      if (barcode.isEmpty) {
+        skipped++;
+        continue;
+      }
+      try {
+        final name = row.length > 1 ? row[1].trim() : '';
+        if (name.isEmpty) {
+          errors.add('Satir ${i + 1}: urun adi bos ($barcode)');
+          skipped++;
+          continue;
+        }
+        String category =
+            row.length > 2 ? row[2].trim().toUpperCase() : 'DIGER';
+        const catMap = {
+          'BOYA': 'BOYA',
+          'KUMANYA': 'KUMANYA',
+          'KABIN': 'KABIN',
+          'KABIN MALZEMELERI': 'KABIN',
+          'RASPA': 'RASPA',
+          'EL_ALETI': 'EL_ALETI',
+          'EL ALETI': 'EL_ALETI',
+          'ELEKTRIKLI': 'EL_ALETI',
+          'KKD': 'KKD',
+          'DIGER': 'DIGER',
+        };
+        category = catMap[category] ?? 'DIGER';
+
+        final unit = row.length > 3 && row[3].trim().isNotEmpty
+            ? row[3].trim()
+            : 'Adet';
+        final packSize =
+            row.length > 4 && row[4].trim().isNotEmpty ? row[4].trim() : null;
+        final unitsPerPack = row.length > 5
+            ? (double.tryParse(row[5].replaceAll(',', '.')) ?? 1.0)
+            : 1.0;
+        final color =
+            row.length > 6 && row[6].trim().isNotEmpty ? row[6].trim() : null;
+        final minStock = row.length > 7
+            ? (double.tryParse(row[7].replaceAll(',', '.')) ?? 0.0)
+            : 0.0;
+        final stock = row.length > 8
+            ? (double.tryParse(row[8].replaceAll(',', '.')) ?? 0.0)
+            : 0.0;
+
+        final existing = await findByBarcode(barcode);
+        if (existing != null) {
+          await updateItem(
+            itemId: existing.id,
+            barcode: barcode,
+            name: name,
+            color: color,
+            category: category,
+            unit: unit,
+            packSize: packSize,
+            unitsPerPack: unitsPerPack,
+            minStock: minStock,
+          );
+          if (stock > 0) {
+            await (db.update(db.inventoryItems)
+                  ..where((t) => t.id.equals(existing.id)))
+                .write(InventoryItemsCompanion(
+              currentStock: Value(stock),
+              updatedAt: Value(DateTime.now()),
+            ));
+          }
+          updated++;
+        } else {
+          final id = await createItem(
+            barcode: barcode,
+            name: name,
+            color: color,
+            category: category,
+            unit: unit,
+            packSize: packSize,
+            unitsPerPack: unitsPerPack,
+            minStock: minStock,
+          );
+          if (stock > 0) {
+            await (db.update(db.inventoryItems)..where((t) => t.id.equals(id)))
+                .write(InventoryItemsCompanion(
+              currentStock: Value(stock),
+              updatedAt: Value(DateTime.now()),
+            ));
+          }
+          added++;
+        }
+      } catch (e) {
+        errors.add('Satir ${i + 1}: $e');
+        skipped++;
+      }
+    }
+    return (added: added, updated: updated, skipped: skipped, errors: errors);
+  }
 }
