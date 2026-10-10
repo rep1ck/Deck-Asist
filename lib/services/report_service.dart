@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:excel/excel.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -13,7 +15,25 @@ class ReportService {
   final AppDatabase db;
   ReportService(this.db);
 
-  // ---------- STOK ----------
+  Future<pw.Font> _trFont() async {
+    final data = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    return pw.Font.ttf(data);
+  }
+
+  Future<pw.ThemeData> _pdfTheme() async {
+    try {
+      final font = await _trFont();
+      return pw.ThemeData.withFont(
+        base: font,
+        bold: font,
+        italic: font,
+        boldItalic: font,
+      );
+    } catch (_) {
+      return pw.ThemeData.base();
+    }
+  }
+
   Future<String> exportInventory(ReportFormat format) async {
     switch (format) {
       case ReportFormat.excel:
@@ -28,10 +48,10 @@ class ReportService {
   Future<String> exportInventoryExcel() async {
     final items = await db.select(db.inventoryItems).get();
     final excel = Excel.createExcel();
-    final sheet = excel['Stok Listesi'];
+    final sheet = excel['Stok'];
     sheet.appendRow([
       TextCellValue('Barkod'),
-      TextCellValue('Ürün Adı'),
+      TextCellValue('Urun Adi'),
       TextCellValue('Renk'),
       TextCellValue('Kategori'),
       TextCellValue('Ambalaj'),
@@ -56,25 +76,30 @@ class ReportService {
 
   Future<String> exportInventoryPdf() async {
     final items = await db.select(db.inventoryItems).get();
-    final pdf = pw.Document();
+    final theme = await _pdfTheme();
+    final pdf = pw.Document(theme: theme);
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        theme: theme,
         build: (context) => [
-          pw.Header(level: 0, child: pw.Text('Stok Listesi Raporu')),
-          pw.SizedBox(height: 16),
+          pw.Text('Stok Listesi Raporu',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
           pw.Table.fromTextArray(
-            headers: ['Barkod', 'Ürün', 'Renk', 'Kategori', 'Stok', 'Birim'],
+            headers: ['Barkod', 'Urun', 'Kategori', 'Stok', 'Birim'],
             data: items
                 .map((i) => [
                       i.barcode,
                       i.name,
-                      i.color ?? '-',
                       Labels.category(i.category),
                       i.currentStock.toString(),
                       i.unit,
                     ])
                 .toList(),
+            headerStyle:
+                pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+            cellStyle: const pw.TextStyle(fontSize: 9),
           ),
         ],
       ),
@@ -88,25 +113,21 @@ class ReportService {
     for (final i in items) {
       rows.writeln(
         '<tr><td>${_esc(i.barcode)}</td><td>${_esc(i.name)}</td>'
-        '<td>${_esc(i.color ?? "-")}</td><td>${_esc(Labels.category(i.category))}</td>'
+        '<td>${_esc(Labels.category(i.category))}</td>'
         '<td>${i.currentStock}</td><td>${_esc(i.unit)}</td></tr>',
       );
     }
-    final html = '''
-<html xmlns:o="urn:schemas-microsoft-com:office:office"
-xmlns:w="urn:schemas-microsoft-com:office:word">
-<head><meta charset="utf-8"><title>Stok Listesi</title></head>
-<body>
-<h1>Stok Listesi Raporu</h1>
-<table border="1" cellpadding="4" cellspacing="0">
-<tr><th>Barkod</th><th>Ürün</th><th>Renk</th><th>Kategori</th><th>Stok</th><th>Birim</th></tr>
-$rows
-</table>
-</body></html>''';
-    return await _saveWord(html, 'stok_listesi');
+    return await _saveWord(
+      _wordHtml(
+        'Stok Listesi Raporu',
+        '<table border="1" cellpadding="4" cellspacing="0">'
+        '<tr><th>Barkod</th><th>Urun</th><th>Kategori</th><th>Stok</th><th>Birim</th></tr>'
+        '$rows</table>',
+      ),
+      'stok_listesi',
+    );
   }
 
-  // ---------- İŞLER ----------
   Future<String> exportJobs(ReportFormat format) async {
     switch (format) {
       case ReportFormat.excel:
@@ -121,15 +142,14 @@ $rows
   Future<String> exportJobsExcel() async {
     final jobs = await db.select(db.jobs).get();
     final excel = Excel.createExcel();
-    final sheet = excel['İş Raporu'];
+    final sheet = excel['Isler'];
     sheet.appendRow([
-      TextCellValue('Başlık'),
+      TextCellValue('Baslik'),
       TextCellValue('Durum'),
-      TextCellValue('Öncelik'),
+      TextCellValue('Oncelik'),
       TextCellValue('Lokasyon'),
-      TextCellValue('Başlangıç'),
-      TextCellValue('Bitiş'),
-      TextCellValue('Oluşturma'),
+      TextCellValue('Baslangic'),
+      TextCellValue('Bitis'),
     ]);
     for (final job in jobs) {
       sheet.appendRow([
@@ -139,7 +159,6 @@ $rows
         TextCellValue(job.location ?? ''),
         TextCellValue(job.startTime?.toString() ?? ''),
         TextCellValue(job.endTime?.toString() ?? ''),
-        TextCellValue(job.createdAt.toString()),
       ]);
     }
     return await _saveExcel(excel, 'is_raporu');
@@ -147,15 +166,18 @@ $rows
 
   Future<String> exportJobsPdf() async {
     final jobs = await db.select(db.jobs).get();
-    final pdf = pw.Document();
+    final theme = await _pdfTheme();
+    final pdf = pw.Document(theme: theme);
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        theme: theme,
         build: (context) => [
-          pw.Header(level: 0, child: pw.Text('İş Raporu')),
-          pw.SizedBox(height: 16),
+          pw.Text('Is Raporu',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
           pw.Table.fromTextArray(
-            headers: ['Başlık', 'Durum', 'Öncelik', 'Lokasyon'],
+            headers: ['Baslik', 'Durum', 'Oncelik', 'Lokasyon'],
             data: jobs
                 .map((j) => [
                       j.title,
@@ -164,6 +186,9 @@ $rows
                       j.location ?? '-',
                     ])
                 .toList(),
+            headerStyle:
+                pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+            cellStyle: const pw.TextStyle(fontSize: 9),
           ),
         ],
       ),
@@ -177,22 +202,21 @@ $rows
     for (final j in jobs) {
       rows.writeln(
         '<tr><td>${_esc(j.title)}</td><td>${_esc(Labels.jobStatus(j.status))}</td>'
-        '<td>${_esc(Labels.priority(j.priority))}</td><td>${_esc(j.location ?? "-")}</td></tr>',
+        '<td>${_esc(Labels.priority(j.priority))}</td>'
+        '<td>${_esc(j.location ?? "-")}</td></tr>',
       );
     }
-    final html = '''
-<html><head><meta charset="utf-8"><title>İş Raporu</title></head>
-<body>
-<h1>İş Raporu</h1>
-<table border="1" cellpadding="4" cellspacing="0">
-<tr><th>Başlık</th><th>Durum</th><th>Öncelik</th><th>Lokasyon</th></tr>
-$rows
-</table>
-</body></html>''';
-    return await _saveWord(html, 'is_raporu');
+    return await _saveWord(
+      _wordHtml(
+        'Is Raporu',
+        '<table border="1" cellpadding="4" cellspacing="0">'
+        '<tr><th>Baslik</th><th>Durum</th><th>Oncelik</th><th>Lokasyon</th></tr>'
+        '$rows</table>',
+      ),
+      'is_raporu',
+    );
   }
 
-  // ---------- BAKIM ----------
   Future<String> exportMaintenance(ReportFormat format) async {
     switch (format) {
       case ReportFormat.excel:
@@ -207,11 +231,11 @@ $rows
   Future<String> exportMaintenanceExcel() async {
     final plans = await db.select(db.maintenancePlans).get();
     final excel = Excel.createExcel();
-    final sheet = excel['Planlı Bakım'];
+    final sheet = excel['Bakim'];
     sheet.appendRow([
-      TextCellValue('Bakım Adı'),
-      TextCellValue('Periyot (Gün)'),
-      TextCellValue('Son Yapılma'),
+      TextCellValue('Bakim Adi'),
+      TextCellValue('Periyot (Gun)'),
+      TextCellValue('Son Yapilma'),
       TextCellValue('Sonraki Tarih'),
       TextCellValue('Durum'),
     ]);
@@ -221,9 +245,9 @@ $rows
       if (plan.nextDueDate != null) {
         final diff = plan.nextDueDate!.difference(now).inDays;
         if (diff < 0) {
-          durum = 'Gecikmiş';
+          durum = 'Gecikmis';
         } else if (diff <= 7) {
-          durum = 'Yaklaşıyor';
+          durum = 'Yaklasiyor';
         }
       }
       sheet.appendRow([
@@ -240,32 +264,38 @@ $rows
   Future<String> exportMaintenancePdf() async {
     final plans = await db.select(db.maintenancePlans).get();
     final now = DateTime.now();
-    final pdf = pw.Document();
+    final theme = await _pdfTheme();
+    final pdf = pw.Document(theme: theme);
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        theme: theme,
         build: (context) => [
-          pw.Header(level: 0, child: pw.Text('Planlı Bakım Raporu')),
-          pw.SizedBox(height: 16),
+          pw.Text('Planli Bakim Raporu',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
           pw.Table.fromTextArray(
-            headers: ['Bakım', 'Periyot', 'Sonraki', 'Durum'],
+            headers: ['Bakim', 'Periyot', 'Sonraki', 'Durum'],
             data: plans.map((plan) {
               String durum = 'Normal';
               if (plan.nextDueDate != null) {
                 final diff = plan.nextDueDate!.difference(now).inDays;
                 if (diff < 0) {
-                  durum = 'Gecikmiş';
+                  durum = 'Gecikmis';
                 } else if (diff <= 7) {
-                  durum = 'Yaklaşıyor';
+                  durum = 'Yaklasiyor';
                 }
               }
               return [
                 plan.title,
-                '${plan.intervalDays} gün',
+                '${plan.intervalDays} gun',
                 plan.nextDueDate?.toString().substring(0, 10) ?? '-',
                 durum,
               ];
             }).toList(),
+            headerStyle:
+                pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+            cellStyle: const pw.TextStyle(fontSize: 9),
           ),
         ],
       ),
@@ -282,9 +312,9 @@ $rows
       if (plan.nextDueDate != null) {
         final diff = plan.nextDueDate!.difference(now).inDays;
         if (diff < 0) {
-          durum = 'Gecikmiş';
+          durum = 'Gecikmis';
         } else if (diff <= 7) {
-          durum = 'Yaklaşıyor';
+          durum = 'Yaklasiyor';
         }
       }
       rows.writeln(
@@ -293,29 +323,50 @@ $rows
         '<td>$durum</td></tr>',
       );
     }
-    final html = '''
-<html><head><meta charset="utf-8"><title>Planlı Bakım</title></head>
-<body>
-<h1>Planlı Bakım Raporu</h1>
-<table border="1" cellpadding="4" cellspacing="0">
-<tr><th>Bakım</th><th>Periyot</th><th>Sonraki</th><th>Durum</th></tr>
-$rows
-</table>
-</body></html>''';
-    return await _saveWord(html, 'bakim_raporu');
+    return await _saveWord(
+      _wordHtml(
+        'Planli Bakim Raporu',
+        '<table border="1" cellpadding="4" cellspacing="0">'
+        '<tr><th>Bakim</th><th>Periyot</th><th>Sonraki</th><th>Durum</th></tr>'
+        '$rows</table>',
+      ),
+      'bakim_raporu',
+    );
   }
 
-  // ---------- yardımcılar ----------
   String _esc(String s) => s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
+      .replaceAll('&', '&')
+      .replaceAll('<', '<')
+      .replaceAll('>', '>')
+      .replaceAll('"', '"');
+
+  String _wordHtml(String title, String body) {
+    return '''
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>$title</title>
+<style>
+body{font-family:Arial,'Segoe UI',sans-serif}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #333;padding:6px}
+th{background:#e8eef1}
+</style>
+</head>
+<body>
+<h1>$title</h1>
+$body
+</body>
+</html>''';
+  }
 
   Future<String> _saveExcel(Excel excel, String name) async {
     final dir = await getApplicationDocumentsDirectory();
     final path =
         '${dir.path}/${name}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-    await File(path).writeAsBytes(excel.encode()!);
+    await File(path).writeAsBytes(excel.encode()!, flush: true);
     return path;
   }
 
@@ -323,7 +374,7 @@ $rows
     final dir = await getApplicationDocumentsDirectory();
     final path =
         '${dir.path}/${name}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-    await File(path).writeAsBytes(await pdf.save());
+    await File(path).writeAsBytes(await pdf.save(), flush: true);
     return path;
   }
 
@@ -331,7 +382,8 @@ $rows
     final dir = await getApplicationDocumentsDirectory();
     final path =
         '${dir.path}/${name}_${DateTime.now().millisecondsSinceEpoch}.doc';
-    await File(path).writeAsString(html, flush: true);
+    final bom = [0xEF, 0xBB, 0xBF];
+    await File(path).writeAsBytes([...bom, ...utf8.encode(html)], flush: true);
     return path;
   }
 
