@@ -1,4 +1,4 @@
-﻿import 'package:drift/drift.dart';
+import 'package:drift/drift.dart';
 import '../data/database/app_database.dart';
 import '../core/utils/sync_identity.dart';
 
@@ -27,25 +27,26 @@ class InventoryService {
           userId: userId,
           note: Value(note),
         ));
-    final movements = await (db.select(db.stockMovements)
-          ..where((t) => t.itemId.equals(itemId)))
-        .get();
-    movements.sort((a, b) {
-      final d = a.movementDate.compareTo(b.movementDate);
-      if (d != 0) return d;
-      final c = a.createdAt.compareTo(b.createdAt);
-      if (c != 0) return c;
-      return (a.syncId ?? '').compareTo(b.syncId ?? '');
-    });
-    var newStock = 0.0;
-    for (final m in movements) {
-      if (m.movementType == 'GIRIS') newStock += m.quantity;
-      if (m.movementType == 'CIKIS') newStock -= m.quantity;
-      if (m.movementType == 'SAYIM' || m.movementType == 'DUZELTME') newStock = m.quantity;
-      if (newStock < 0) newStock = 0;
+
+    final item = await (db.select(db.inventoryItems)
+          ..where((t) => t.id.equals(itemId)))
+        .getSingle();
+
+    double newStock = item.currentStock;
+    if (movementType == 'GIRIS') {
+      newStock += quantity;
+    } else if (movementType == 'CIKIS') {
+      newStock -= quantity;
+    } else if (movementType == 'SAYIM' || movementType == 'DUZELTME') {
+      newStock = quantity;
     }
+    if (newStock < 0) newStock = 0;
+
     await (db.update(db.inventoryItems)..where((t) => t.id.equals(itemId)))
-        .write(InventoryItemsCompanion(currentStock: Value(newStock)));
+        .write(InventoryItemsCompanion(
+      currentStock: Value(newStock),
+      updatedAt: Value(DateTime.now()),
+    ));
   }
 
   Future<int> createItem({
@@ -53,8 +54,9 @@ class InventoryService {
     required String name,
     String? color,
     String category = 'BOYA',
-    String unit = 'Lt',
+    String unit = 'Adet',
     String? packSize,
+    double unitsPerPack = 1,
     double minStock = 0,
   }) async {
     return await db.into(db.inventoryItems).insert(
@@ -66,6 +68,7 @@ class InventoryService {
             category: category,
             unit: Value(unit),
             packSize: Value(packSize),
+            unitsPerPack: Value(unitsPerPack <= 0 ? 1 : unitsPerPack),
             minStock: Value(minStock),
           ),
         );
@@ -79,13 +82,14 @@ class InventoryService {
     String? category,
     String? unit,
     String? packSize,
+    double? unitsPerPack,
     double? minStock,
   }) async {
     final trimmed = barcode.trim();
     if (trimmed.isEmpty || name.trim().isEmpty) return false;
 
     final conflict = await (db.select(db.inventoryItems)
-          ..where((t) => t.barcode.equals(trimmed) & t.id.isNotValue(itemId)))
+          ..where((t) => t.barcode.equals(trimmed) & t.id.equals(itemId).not()))
         .getSingleOrNull();
     if (conflict != null) return false;
 
@@ -97,10 +101,12 @@ class InventoryService {
       category: category != null ? Value(category) : const Value.absent(),
       unit: unit != null ? Value(unit) : const Value.absent(),
       packSize: Value(packSize),
+      unitsPerPack: unitsPerPack != null
+          ? Value(unitsPerPack <= 0 ? 1 : unitsPerPack)
+          : const Value.absent(),
       minStock: minStock != null ? Value(minStock) : const Value.absent(),
       updatedAt: Value(DateTime.now()),
     ));
     return true;
   }
 }
-
