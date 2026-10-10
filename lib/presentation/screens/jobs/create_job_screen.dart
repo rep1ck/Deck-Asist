@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/labels.dart';
 import '../../../services/job_service.dart';
 
 class CreateJobScreen extends ConsumerStatefulWidget {
@@ -52,7 +53,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
     final usersAsync = ref.watch(usersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Yeni İş')),
+      appBar: AppBar(title: const Text('Yeni Is')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -60,7 +61,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(
-                labelText: 'İş Başlığı *',
+                labelText: 'Is Basligi *',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -68,7 +69,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
             TextField(
               controller: _descriptionController,
               decoration: const InputDecoration(
-                labelText: 'Açıklama',
+                labelText: 'Aciklama',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
@@ -85,13 +86,13 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
             DropdownButtonFormField<String>(
               value: _priority,
               decoration: const InputDecoration(
-                labelText: 'Öncelik',
+                labelText: 'Oncelik',
                 border: OutlineInputBorder(),
               ),
               items: const [
-                DropdownMenuItem(value: 'LOW', child: Text('Düşük')),
+                DropdownMenuItem(value: 'LOW', child: Text('Dusuk')),
                 DropdownMenuItem(value: 'NORMAL', child: Text('Normal')),
-                DropdownMenuItem(value: 'HIGH', child: Text('Yüksek')),
+                DropdownMenuItem(value: 'HIGH', child: Text('Yuksek')),
                 DropdownMenuItem(value: 'URGENT', child: Text('Acil')),
               ],
               onChanged: (v) => setState(() => _priority = v!),
@@ -101,13 +102,27 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             usersAsync.when(
               data: (users) {
-                final personel =
-                    users.where((u) => u.role == 'PERSONEL' && u.isActive == 1);
+                final assignable = users
+                    .where((u) =>
+                        u.isActive == 1 &&
+                        (u.role == 'PERSONEL' || u.role == 'REIS'))
+                    .toList();
+                if (assignable.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Atanacak personel yok.\n'
+                      'Kullanici Yonetimi\'nden rol=Personel veya Reis kullanici ekleyin.',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  );
+                }
                 return Column(
-                  children: personel.map((user) {
+                  children: assignable.map((user) {
                     final selected = _selectedUserIds.contains(user.id);
                     return CheckboxListTile(
                       title: Text(user.fullName),
+                      subtitle: Text(Labels.role(user.role)),
                       value: selected,
                       onChanged: (val) {
                         setState(() {
@@ -130,7 +145,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
               onPressed: _isLoading ? null : _save,
               child: _isLoading
                   ? const CircularProgressIndicator()
-                  : const Text('İşi Oluştur'),
+                  : const Text('Isi Olustur'),
             ),
           ],
         ),
