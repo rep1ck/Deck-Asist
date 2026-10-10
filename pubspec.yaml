@@ -26,6 +26,7 @@ dependencies:
   image: ^4.2.0
   archive: ^3.6.1
   share_plus: ^10.0.2
+  file_picker: ^8.1.2
   shared_preferences: ^2.3.2
 
 dev_dependencies:
