@@ -3,11 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/providers.dart';
 import '../../../services/inventory_service.dart';
-import 'stock_movement_screen.dart';
 import 'add_inventory_item_screen.dart';
+import 'stock_movement_screen.dart';
 
+/// [defaultMovementType]: SAYIM | GIRIS | CIKIS | DUZELTME
 class BarcodeScanScreen extends ConsumerStatefulWidget {
-  const BarcodeScanScreen({super.key});
+  final String defaultMovementType;
+  final String title;
+
+  const BarcodeScanScreen({
+    super.key,
+    this.defaultMovementType = 'SAYIM',
+    this.title = 'Barkod ile Sayim',
+  });
 
   @override
   ConsumerState<BarcodeScanScreen> createState() => _BarcodeScanScreenState();
@@ -41,12 +49,12 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       final shouldAdd = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Ürün Bulunamadı'),
-          content: Text('Barkod: $code\n\nYeni ürün eklemek ister misiniz?'),
+          title: const Text('Urun Bulunamadi'),
+          content: Text('Barkod: $code\n\nYeni urun eklemek ister misiniz?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hayır'),
+              child: const Text('Hayir'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
@@ -63,27 +71,31 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
           ),
         );
       }
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
       return;
     }
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => StockMovementScreen(item: item)),
+      MaterialPageRoute(
+        builder: (_) => StockMovementScreen(
+          item: item,
+          initialMovementType: widget.defaultMovementType,
+        ),
+      ),
     );
-    setState(() => _isProcessing = false);
+    if (mounted) setState(() => _isProcessing = false);
     ref.invalidate(inventoryProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Barkod Okut')),
+      appBar: AppBar(title: Text(widget.title)),
       body: Stack(
         children: [
           MobileScanner(controller: controller, onDetect: _onDetect),
-          if (_isProcessing)
-            const Center(child: CircularProgressIndicator()),
+          if (_isProcessing) const Center(child: CircularProgressIndicator()),
           Positioned(
             bottom: 40,
             left: 0,
@@ -96,9 +108,11 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  'Barkodu kare içine getirin',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                child: Text(
+                  widget.defaultMovementType == 'SAYIM'
+                      ? 'Sayim icin barkodu okutun'
+                      : 'Barkodu kare icine getirin',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
             ),
