@@ -78,7 +78,7 @@ class AppDatabase extends _$AppDatabase {
       if (existing != null) return;
       await into(users).insert(
         UsersCompanion.insert(
-          syncId: Value('seed-$username'),
+          syncId: Value('seed-' + username),
           username: username,
           passwordHash: PasswordUtils.hash(password),
           fullName: fullName,
@@ -297,7 +297,7 @@ class AppDatabase extends _$AppDatabase {
     String packSize,
   ) {
     return InventoryItemsCompanion.insert(
-      syncId: Value('seed-$barcode'),
+      syncId: Value('seed-' + barcode),
       barcode: barcode,
       name: name,
       color: Value(color),
