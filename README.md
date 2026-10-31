@@ -42,26 +42,6 @@ Senkronizasyon internet üzerinden yapılmaz; cihazlar birbirleriyle yerel ağ �
 
 > Not: Fotoğraf kaydının veritabanındaki yolu senkronize edilir. Fotoğraf dosyasının kendisinin cihazlar arasında kopyalanması ayrıca dosya aktarımı gerektirir; aynı yerel dosya yolu iki cihazda fiziksel olarak mevcut olmayabilir.
 
-## GitHub'dan APK üretme
-
-Android platform dosyaları repoda tutulmaz. GitHub Actions, sabit Flutter/Java sürümüyle Android projesini oluşturur.
-
-1. ZIP içindeki `deck_master` klasörünün içeriğini bir GitHub reposuna yükleyin.
-2. `Actions` sekmesine girin.
-3. `Build Deck Asist Android APK` workflow'unu seçin.
-4. `Run workflow` ile manuel başlatın veya `main` / `master` dalına push yapın.
-5. İşlem tamamlanınca `Deck-Asist-APK` artifact'ından `app-release.apk` dosyasını indirin.
-
-Workflow:
-
-- Flutter 3.24.5 + Java 17
-- Android platform oluşturma
-- LAN için Android INTERNET izni
-- `flutter pub get`
-- Drift kod üretimi
-- `flutter analyze`
-- `flutter build apk --release`
-- Release APK artifact yükleme
 
 ## Yerelde çalıştırma
 
