@@ -26,13 +26,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) async {
           await m.createAll();
           await _seedRootUser();
+          await _seedCrewUsers();
           await _seedPaintList();
           await ensureSyncIds();
         },
@@ -57,8 +58,71 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.addColumn(inventoryItems, inventoryItems.unitsPerPack);
           }
+          if (from < 5) {
+            await _seedCrewUsers();
+          }
         },
       );
+
+  Future<void> _seedCrewUsers() async {
+    Future<void> ensure({
+      required String username,
+      required String password,
+      required String fullName,
+      required String role,
+      int canManageUsers = 0,
+    }) async {
+      final existing = await (select(users)
+            ..where((u) => u.username.equals(username)))
+          .getSingleOrNull();
+      if (existing != null) return;
+      await into(users).insert(
+        UsersCompanion.insert(
+          syncId: Value('seed-$username'),
+          username: username,
+          passwordHash: PasswordUtils.hash(password),
+          fullName: fullName,
+          role: role,
+          isActive: const Value(1),
+          canManageUsers: Value(canManageUsers),
+        ),
+      );
+    }
+
+    await ensure(
+      username: 'master@zeynepc.arkas',
+      password: '654321',
+      fullName: 'Suvari / Master',
+      role: 'MASTER',
+      canManageUsers: 1,
+    );
+    await ensure(
+      username: 'chief@zeynepc.arkas',
+      password: '654321',
+      fullName: '2. Kaptan',
+      role: 'SECOND',
+      canManageUsers: 1,
+    );
+    await ensure(
+      username: 'bosun@zeynepc.arkas',
+      password: '123456',
+      fullName: 'Guverte Reisi',
+      role: 'REIS',
+      canManageUsers: 1,
+    );
+    await ensure(
+      username: 'ab1@zeynepc.arkas',
+      password: '123456',
+      fullName: 'Fenerci',
+      role: 'PERSONEL',
+    );
+    await ensure(
+      username: 'ab2@zeynepc.arkas',
+      password: '123456',
+      fullName: 'Usta Gemici',
+      role: 'PERSONEL',
+    );
+  }
 
   Future<void> _seedRootUser() async {
     final existing = await (select(users)
