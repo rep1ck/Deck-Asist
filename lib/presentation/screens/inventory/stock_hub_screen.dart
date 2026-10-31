@@ -37,7 +37,12 @@ class StockHubScreen extends ConsumerWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const BarcodeScanScreen(
+                    defaultMovementType: 'SAYIM',
+                    title: 'Barkod ile Sayim',
+                  ),
+                ),
               );
             },
           ),
@@ -46,6 +51,25 @@ class StockHubScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const BarcodeScanScreen(
+                      defaultMovementType: 'SAYIM',
+                      title: 'Barkod ile Sayim',
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Barkod ile Sayim / Duzeltme'),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (canImport) ...[
             Row(
               children: [
