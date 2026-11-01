@@ -9,6 +9,7 @@ import '../jobs/job_list_screen.dart';
 import '../maintenance/maintenance_list_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/user_management_screen.dart';
+import '../settings/ship_settings_screen.dart';
 import '../sync/sync_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -29,10 +30,15 @@ class HomeScreen extends ConsumerWidget {
     }
 
     final role = user.role;
+    final isPersonel = role == 'PERSONEL';
+    final openJobs = ref.watch(openJobsProvider);
+    final lowStock = ref.watch(lowStockProvider);
+    final overdue = ref.watch(overdueMaintenanceProvider);
+
     final items = <_MenuItem>[
       _MenuItem(
-        title: 'Isler',
-        subtitle: 'Atama ve takip',
+        title: isPersonel ? 'Is lerim' : 'Isler',
+        subtitle: isPersonel ? 'Atanan isler' : 'Atama ve takip',
         icon: Icons.work_outline_rounded,
         color: const Color(0xFF3D7A8C),
         onTap: () => Navigator.push(
@@ -41,8 +47,8 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       _MenuItem(
-        title: 'Stok / Sayim',
-        subtitle: 'Kategori · barkod',
+        title: isPersonel ? 'Sayim' : 'Stok / Sayim',
+        subtitle: isPersonel ? 'Barkod sayim' : 'Kategori · barkod',
         icon: Icons.inventory_2_outlined,
         color: const Color(0xFF4A7C59),
         onTap: () => Navigator.push(
@@ -50,20 +56,21 @@ class HomeScreen extends ConsumerWidget {
           MaterialPageRoute(builder: (_) => const StockHubScreen()),
         ),
       ),
-      _MenuItem(
-        title: 'Planli Bakim',
-        subtitle: 'Hatirlatmalar',
-        icon: Icons.build_outlined,
-        color: const Color(0xFF8B6B3D),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const MaintenanceListScreen()),
+      if (!isPersonel)
+        _MenuItem(
+          title: 'Planli Bakim',
+          subtitle: 'Hatirlatmalar',
+          icon: Icons.build_outlined,
+          color: const Color(0xFF8B6B3D),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MaintenanceListScreen()),
+          ),
         ),
-      ),
       if (['ROOT', 'MASTER', 'SECOND', 'REIS', 'INSPECTOR'].contains(role))
         _MenuItem(
           title: 'Raporlar',
-          subtitle: 'Excel · PDF · Word',
+          subtitle: 'PDF · tarih araligi',
           icon: Icons.assessment_outlined,
           color: const Color(0xFF5C6B8A),
           onTap: () => Navigator.push(
@@ -74,25 +81,35 @@ class HomeScreen extends ConsumerWidget {
       if (['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(role))
         _MenuItem(
           title: 'Kullanicilar',
-          subtitle: 'Yetki yonetimi',
-          icon: Icons.people_outline_rounded,
+          subtitle: 'Rol ve sifre',
+          icon: Icons.people_outline,
           color: const Color(0xFF6B5B7A),
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const UserManagementScreen()),
           ),
         ),
-      if (['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(role))
+      if (['ROOT', 'MASTER', 'SECOND'].contains(role))
         _MenuItem(
-          title: 'LAN Senkron',
-          subtitle: 'Ag + arsiv',
-          icon: Icons.sync_rounded,
+          title: 'Gemi Ayarlari',
+          subtitle: 'Isim · imza · kurallar',
+          icon: Icons.sailing,
           color: const Color(0xFF2F6F7E),
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const SyncScreen()),
+            MaterialPageRoute(builder: (_) => const ShipSettingsScreen()),
           ),
         ),
+      _MenuItem(
+        title: 'LAN Sync',
+        subtitle: 'Ayni ag paylasim',
+        icon: Icons.sync,
+        color: const Color(0xFF5A6F7A),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SyncScreen()),
+        ),
+      ),
     ];
 
     return Scaffold(
@@ -101,13 +118,8 @@ class HomeScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A3A4A),
-              Color(0xFF243F4E),
-              Color(0xFFE8EEF1),
-              Color(0xFFE8EEF1),
-            ],
-            stops: [0.0, 0.22, 0.22, 1.0],
+            colors: [Color(0xFF0E2A36), Color(0xFF1A3A4A), Color(0xFFE8EEF1)],
+            stops: [0, 0.28, 0.28],
           ),
         ),
         child: SafeArea(
@@ -117,38 +129,22 @@ class HomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/icon/app_icon.png',
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 48,
-                          height: 48,
-                          color: Colors.white24,
-                          child: const Icon(Icons.sailing, color: Colors.white),
-                        ),
-                      ),
-                    ),
+                    const Icon(Icons.sailing, color: Colors.white, size: 36),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            user.fullName,
-                            style: const TextStyle(
+                          const Text(
+                            'Deck Asist',
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            Labels.role(user.role),
+                            '${user.fullName} · ${Labels.role(role)}',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.85),
                               fontSize: 12,
@@ -158,95 +154,192 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.white),
-                      tooltip: 'Cikis',
-                      onPressed: () async {
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Cikis Yap'),
-                            content:
-                                const Text('Oturumu kapatmak istiyor musunuz?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text('Hayir'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                child: const Text('Evet'),
-                              ),
-                            ],
-                          ),
+                      icon: const Icon(Icons.logout, color: Colors.white70),
+                      onPressed: () {
+                        ref.read(currentUserProvider.notifier).state = null;
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()),
+                          (_) => false,
                         );
-                        if (ok == true && context.mounted) {
-                          ref.read(currentUserProvider.notifier).state = null;
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                                builder: (_) => const LoginScreen()),
-                            (_) => false,
-                          );
-                        }
                       },
                     ),
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _DashCard(
+                        label: 'Acik is',
+                        value: openJobs.when(
+                          data: (l) => '${l.length}',
+                          loading: () => '...',
+                          error: (_, __) => '-',
+                        ),
+                        color: const Color(0xFF3D7A8C),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _DashCard(
+                        label: 'Geciken bakim',
+                        value: overdue.when(
+                          data: (l) => '${l.length}',
+                          loading: () => '...',
+                          error: (_, __) => '-',
+                        ),
+                        color: const Color(0xFFB85C38),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _DashCard(
+                        label: 'Dusuk stok',
+                        value: lowStock.when(
+                          data: (l) => '${l.length}',
+                          loading: () => '...',
+                          error: (_, __) => '-',
+                        ),
+                        color: const Color(0xFF8B6B3D),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              lowStock.when(
+                data: (list) {
+                  if (list.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Material(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(10),
+                      child: ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.warning_amber,
+                            color: Color(0xFFB85C38)),
+                        title: Text(
+                          'Kritik stok: ${list.take(3).map((e) => e.name).join(", ")}'
+                          '${list.length > 3 ? " +" : ""}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const StockHubScreen()),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 12),
               Expanded(
                 child: Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
-                    color: AppColors.mist,
+                    color: Color(0xFFE8EEF1),
                     borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(28)),
+                        BorderRadius.vertical(top: Radius.circular(20)),
                   ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.deepSea.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      Expanded(
-                        child: GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: 1.05,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 1.15,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, i) {
+                      final m = items[i];
+                      return Material(
+                        color: Colors.white,
+                        elevation: 1.5,
+                        shadowColor: AppColors.deepSea.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: m.onTap,
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: m.color.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(m.icon, color: m.color),
+                                ),
+                                const Spacer(),
+                                Text(m.title,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15)),
+                                Text(m.subtitle,
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600)),
+                              ],
+                            ),
                           ),
-                          itemCount: items.length,
-                          itemBuilder: (context, index) {
-                            return _AnimatedMenuCard(
-                              item: items[index],
-                              delayMs: 50 * index,
-                            );
-                          },
                         ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          'rep1ck & BY',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'rep1ck ve BY',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DashCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _DashCard(
+      {required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.85), fontSize: 11)),
+        ],
       ),
     );
   }
@@ -258,106 +351,11 @@ class _MenuItem {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _MenuItem({
+  _MenuItem({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.color,
     required this.onTap,
   });
-}
-
-class _AnimatedMenuCard extends StatefulWidget {
-  final _MenuItem item;
-  final int delayMs;
-  const _AnimatedMenuCard({required this.item, required this.delayMs});
-
-  @override
-  State<_AnimatedMenuCard> createState() => _AnimatedMenuCardState();
-}
-
-class _AnimatedMenuCardState extends State<_AnimatedMenuCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  late final Animation<double> _fade;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _fade = CurvedAnimation(parent: _c, curve: Curves.easeOut);
-    _scale = Tween<double>(begin: 0.94, end: 1).animate(
-      CurvedAnimation(parent: _c, curve: Curves.easeOutBack),
-    );
-    Future.delayed(Duration(milliseconds: widget.delayMs), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final item = widget.item;
-    return FadeTransition(
-      opacity: _fade,
-      child: ScaleTransition(
-        scale: _scale,
-        child: Material(
-          color: Colors.white,
-          elevation: 2,
-          shadowColor: AppColors.deepSea.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            onTap: item.onTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: item.color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(item.icon, color: item.color, size: 24),
-                  ),
-                  const Spacer(),
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
