@@ -15,7 +15,9 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
+  final _weatherController = TextEditingController();
   String _priority = 'NORMAL';
+  String _category = 'GENEL';
   final List<int> _selectedUserIds = [];
   bool _isLoading = false;
 
@@ -31,12 +33,18 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
       description: _descriptionController.text.trim(),
       location: _locationController.text.trim(),
       priority: _priority,
+      jobCategory: _category,
+      weatherNote: _weatherController.text.trim().isEmpty
+          ? null
+          : _weatherController.text.trim(),
       createdById: currentUser.id,
       assignedUserIds: _selectedUserIds,
     );
 
     setState(() => _isLoading = false);
     ref.invalidate(jobsProvider);
+    ref.invalidate(visibleJobsProvider);
+    ref.invalidate(openJobsProvider);
     if (mounted) Navigator.pop(context);
   }
 
@@ -45,6 +53,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
+    _weatherController.dispose();
     super.dispose();
   }
 
@@ -69,7 +78,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
             TextField(
               controller: _descriptionController,
               decoration: const InputDecoration(
-                labelText: 'Aciklama',
+                labelText: 'Aciklama / is kapsami',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
@@ -97,6 +106,31 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
               ],
               onChanged: (v) => setState(() => _priority = v!),
             ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _category,
+              decoration: const InputDecoration(
+                labelText: 'Is kategorisi',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'GENEL', child: Text('Genel')),
+                DropdownMenuItem(value: 'BOYA', child: Text('Boya')),
+                DropdownMenuItem(value: 'RASPA', child: Text('Raspa')),
+                DropdownMenuItem(
+                    value: 'MERDIVEN', child: Text('Merdiven / Iskele')),
+                DropdownMenuItem(value: 'EMINIYET', child: Text('Emniyet')),
+              ],
+              onChanged: (v) => setState(() => _category = v!),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _weatherController,
+              decoration: const InputDecoration(
+                labelText: 'Hava / deniz sarti (opsiyonel)',
+                border: OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 16),
             const Text('Atanacak Personeller',
                 style: TextStyle(fontWeight: FontWeight.bold)),
@@ -112,7 +146,7 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'Atanacak personel yok.\n'
-                      'Kullanici Yonetimi\'nden rol=Personel veya Reis kullanici ekleyin.',
+                      'Kullanici Yonetimi\'nden Personel veya Reis ekleyin.',
                       style: TextStyle(color: Colors.orange),
                     ),
                   );
