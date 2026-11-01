@@ -74,7 +74,7 @@ class JobService {
       await NotificationService.jobCompleted(
         jobId: jobId,
         title: job.title,
-        byName: completedByName ?? 'Kullanıcı',
+        byName: completedByName ?? 'Kullanici',
       );
     }
     if (newStatus == 'APPROVED') {
@@ -82,7 +82,6 @@ class JobService {
     }
   }
 
-  /// Fotoğrafı kalıcı kaydeder; boyut küçültülür (görüntü bozulmadan ~JPEG 65, max 1280px).
   Future<String> _persistPhoto(String sourcePath) async {
     final dir = await getApplicationDocumentsDirectory();
     final photoDir = Directory(p.join(dir.path, 'job_photos'));
@@ -93,7 +92,6 @@ class JobService {
     );
     try {
       final bytes = await File(sourcePath).readAsBytes();
-      // image package ile yeniden boyutlandır + sıkıştır
       final decoded = img.decodeImage(bytes);
       if (decoded != null) {
         var out = decoded;
@@ -118,6 +116,7 @@ class JobService {
     required int jobId,
     required String photoPath,
     required int uploadedById,
+    String photoPhase = 'GENERAL',
     String? description,
   }) async {
     final permanentPath = await _persistPhoto(photoPath);
@@ -125,6 +124,7 @@ class JobService {
           syncId: Value(SyncIdentity.newId()),
           jobId: jobId,
           photoPath: permanentPath,
+          photoPhase: Value(photoPhase),
           uploadedBy: uploadedById,
           description: Value(description),
           approvalStatus: const Value('APPROVED'),
