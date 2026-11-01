@@ -1,4 +1,3 @@
-/// Türkçe etiketler – durum, öncelik, stok, kategori, birim
 class Labels {
   static String jobStatus(String status) {
     switch (status) {
@@ -7,11 +6,11 @@ class Labels {
       case 'IN_PROGRESS':
         return 'Devam Ediyor';
       case 'COMPLETED':
-        return 'Tamamlandı';
+        return 'Tamamlandi';
       case 'APPROVED':
-        return 'Onaylandı';
+        return 'Onaylandi';
       case 'CANCELLED':
-        return 'İptal';
+        return 'Iptal';
       default:
         return status;
     }
@@ -20,11 +19,11 @@ class Labels {
   static String priority(String p) {
     switch (p) {
       case 'LOW':
-        return 'Düşük';
+        return 'Dusuk';
       case 'NORMAL':
         return 'Normal';
       case 'HIGH':
-        return 'Yüksek';
+        return 'Yuksek';
       case 'URGENT':
         return 'Acil';
       default:
@@ -35,13 +34,13 @@ class Labels {
   static String movementType(String t) {
     switch (t) {
       case 'GIRIS':
-        return 'Giriş (Stok Ekle)';
+        return 'Giris (Stok Ekle)';
       case 'CIKIS':
-        return 'Çıkış (Kullanım)';
+        return 'Cikis (Kullanim)';
       case 'SAYIM':
-        return 'Sayım';
+        return 'Sayim';
       case 'DUZELTME':
-        return 'Düzeltme';
+        return 'Duzeltme';
       default:
         return t;
     }
@@ -50,17 +49,17 @@ class Labels {
   static String role(String r) {
     switch (r) {
       case 'ROOT':
-        return 'Sistem Yöneticisi';
+        return 'Sistem Yoneticisi';
       case 'MASTER':
         return 'Master (Kaptan)';
       case 'SECOND':
         return '2. Kaptan';
       case 'REIS':
-        return 'Güverte Reisi';
+        return 'Guverte Reisi';
       case 'PERSONEL':
-        return 'Güverte Personeli';
+        return 'Guverte Personeli';
       case 'INSPECTOR':
-        return 'Şirket / Enspektör';
+        return 'Sirket / Enspektor';
       default:
         return r;
     }
@@ -75,13 +74,13 @@ class Labels {
       case 'KABIN':
         return 'Kabin Malzemeleri';
       case 'RASPA':
-        return 'Raspa / Boya Yardımcı';
+        return 'Raspa / Boya Yardimci';
       case 'EL_ALETI':
         return 'Elektrikli / El Aleti';
       case 'KKD':
-        return 'KKD (Gözlük, Eldiven vb.)';
+        return 'KKD (Gozluk, Eldiven vb.)';
       case 'DIGER':
-        return 'Diğer';
+        return 'Diger';
       default:
         return c;
     }
@@ -97,7 +96,7 @@ class Labels {
     'DIGER',
   ];
 
-  static const unitValues = ['Lt', 'Kg', 'Adet', 'Kutu', 'Paket', 'Metre', 'Çift'];
+  static const unitValues = ['Lt', 'Kg', 'Adet', 'Kutu', 'Paket', 'Metre', 'Cift'];
 
   static String unit(String u) {
     switch (u) {
@@ -113,10 +112,27 @@ class Labels {
         return 'Paket';
       case 'Metre':
         return 'Metre';
-      case 'Çift':
-        return 'Çift';
+      case 'Cift':
+        return 'Cift';
       default:
         return u;
+    }
+  }
+
+  static String jobCategory(String c) {
+    switch (c) {
+      case 'BOYA':
+        return 'Boya';
+      case 'RASPA':
+        return 'Raspa';
+      case 'MERDIVEN':
+        return 'Merdiven / Iskele';
+      case 'EMINIYET':
+        return 'Emniyet';
+      case 'GENEL':
+        return 'Genel';
+      default:
+        return c;
     }
   }
 }

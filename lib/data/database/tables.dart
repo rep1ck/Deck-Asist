@@ -23,6 +23,8 @@ class Jobs extends Table {
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
   TextColumn get location => text().nullable()();
+  TextColumn get jobCategory => text().withDefault(const Constant('GENEL'))();
+  TextColumn get weatherNote => text().nullable()();
   TextColumn get priority => text().withDefault(const Constant('NORMAL'))();
   TextColumn get status => text().withDefault(const Constant('PENDING'))();
   IntColumn get createdBy => integer()();
@@ -47,7 +49,6 @@ class JobPhotos extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get jobId => integer()();
   TextColumn get photoPath => text()();
-  /// BEFORE | AFTER | GENERAL
   TextColumn get photoPhase => text().withDefault(const Constant('GENERAL'))();
   IntColumn get uploadedBy => integer()();
   IntColumn get approvedBy => integer().nullable()();
