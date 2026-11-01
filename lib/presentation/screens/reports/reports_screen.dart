@@ -3,147 +3,149 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../services/report_service.dart';
 
-class ReportsScreen extends ConsumerWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
-  Future<void> _pickAndExport(
-    BuildContext context,
-    ReportService service,
-    String title,
-    Future<String> Function(ReportFormat) exportFn,
-  ) async {
-    final format = await showModalBottomSheet<ReportFormat>(
+  @override
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  DateTime? _from;
+  DateTime? _to;
+  bool _onlyDone = true;
+  bool _busy = false;
+
+  Future<void> _pickFrom() async {
+    final d = await showDatePicker(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
-            ),
-            ListTile(
-              leading: const Icon(Icons.table_chart),
-              title: const Text('Excel (.xlsx)'),
-              onTap: () => Navigator.pop(ctx, ReportFormat.excel),
-            ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf),
-              title: const Text('PDF (.pdf)'),
-              onTap: () => Navigator.pop(ctx, ReportFormat.pdf),
-            ),
-            ListTile(
-              leading: const Icon(Icons.description),
-              title: const Text('Word (.doc)'),
-              onTap: () => Navigator.pop(ctx, ReportFormat.word),
-            ),
-          ],
-        ),
-      ),
+      initialDate: _from ?? DateTime.now().subtract(const Duration(days: 7)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
     );
-    if (format == null) return;
+    if (d != null) setState(() => _from = d);
+  }
+
+  Future<void> _pickTo() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _to ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (d != null) setState(() => _to = d);
+  }
+
+  Future<void> _run(Future<String> Function() fn) async {
+    setState(() => _busy = true);
     try {
-      final path = await exportFn(format);
-      await service.openFile(path);
-      if (context.mounted) {
+      final path = await fn();
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rapor oluşturuldu')),
+          SnackBar(content: Text('Rapor hazir')),
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider)!;
-    final canExport = ['ROOT', 'MASTER', 'SECOND', 'REIS', 'INSPECTOR']
-        .contains(user.role);
+  Widget build(BuildContext context) {
+    final db = ref.watch(databaseProvider);
+    final service = ReportService(db);
 
-    if (!canExport) {
-      return const Scaffold(
-        body: Center(child: Text('Rapor alma yetkiniz yok')),
-      );
-    }
-
-    final reportService = ReportService(ref.watch(databaseProvider));
+    String fmt(DateTime? d) =>
+        d == null ? 'Sec' : '${d.day}.${d.month}.${d.year}';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Raporlar')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Bir rapor seçin, ardından Excel / PDF / Word formatını belirleyin.',
-            style: TextStyle(color: Colors.black54),
+          const Text('Is raporu tarih araligi',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _pickFrom,
+                  child: Text('Baslangic: ${fmt(_from)}'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _pickTo,
+                  child: Text('Bitis: ${fmt(_to)}'),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _ReportTile(
-            title: 'Stok Listesi',
-            subtitle: 'Boya ve malzemeler',
-            icon: Icons.inventory_2,
-            onTap: () => _pickAndExport(
-              context,
-              reportService,
-              'Stok Listesi – format seçin',
-              reportService.exportInventory,
-            ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Sadece tamamlanan / onayli isler'),
+            value: _onlyDone,
+            onChanged: (v) => setState(() => _onlyDone = v),
           ),
-          _ReportTile(
-            title: 'İş Raporu',
-            subtitle: 'Güverte işleri ve durumlar',
-            icon: Icons.work,
-            onTap: () => _pickAndExport(
-              context,
-              reportService,
-              'İş Raporu – format seçin',
-              reportService.exportJobs,
-            ),
+          ListTile(
+            leading: const Icon(Icons.picture_as_pdf),
+            title: const Text('Is raporu PDF (A4, resimli)'),
+            subtitle: const Text('Oncelikli format'),
+            onTap: _busy
+                ? null
+                : () => _run(() => service.exportJobsPdf(
+                      from: _from,
+                      to: _to,
+                      onlyCompleted: _onlyDone,
+                    )),
           ),
-          _ReportTile(
-            title: 'Planlı Bakım',
-            subtitle: 'Bakım planları ve tarihler',
-            icon: Icons.build,
-            onTap: () => _pickAndExport(
-              context,
-              reportService,
-              'Planlı Bakım – format seçin',
-              reportService.exportMaintenance,
-            ),
+          ListTile(
+            leading: const Icon(Icons.description),
+            title: const Text('Is raporu Word'),
+            onTap: _busy
+                ? null
+                : () => _run(() => service.exportJobsWord(
+                      from: _from,
+                      to: _to,
+                      onlyCompleted: _onlyDone,
+                    )),
           ),
+          ListTile(
+            leading: const Icon(Icons.table_chart),
+            title: const Text('Is listesi Excel'),
+            onTap: _busy ? null : () => _run(() => service.exportJobsExcel()),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.inventory),
+            title: const Text('Stok Excel'),
+            onTap:
+                _busy ? null : () => _run(() => service.exportInventoryExcel()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.picture_as_pdf),
+            title: const Text('Stok PDF'),
+            onTap: _busy
+                ? null
+                : () => _run(() => service.exportInventory(ReportFormat.pdf)),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.build),
+            title: const Text('Bakim PDF (resimli)'),
+            onTap:
+                _busy ? null : () => _run(() => service.exportMaintenancePdf()),
+          ),
+          if (_busy) const LinearProgressIndicator(),
         ],
-      ),
-    );
-  }
-}
-
-class _ReportTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _ReportTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon, size: 32),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
       ),
     );
   }

@@ -10,99 +10,62 @@ class JobListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final jobsAsync = ref.watch(jobsProvider);
-    final currentUser = ref.watch(currentUserProvider)!;
+    final jobsAsync = ref.watch(visibleJobsProvider);
+    final user = ref.watch(currentUserProvider)!;
+    final canCreate =
+        ['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(user.role);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('İşler'),
-        actions: [
-          if (['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(currentUser.role))
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Yeni İş',
-              onPressed: () {
-                Navigator.push(
+        title: Text(user.role == 'PERSONEL' ? 'Is lerim' : 'Isler'),
+      ),
+      floatingActionButton: canCreate
+          ? FloatingActionButton(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const CreateJobScreen()),
-                ).then((_) => ref.invalidate(jobsProvider));
+                );
+                ref.invalidate(visibleJobsProvider);
+                ref.invalidate(jobsProvider);
+                ref.invalidate(openJobsProvider);
               },
-            ),
-        ],
-      ),
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: jobsAsync.when(
         data: (jobs) {
           if (jobs.isEmpty) {
-            return const Center(child: Text('Henüz iş yok'));
+            return const Center(child: Text('Is bulunamadi'));
           }
           return ListView.builder(
-            padding: const EdgeInsets.all(12),
             itemCount: jobs.length,
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              return Card(
-                child: ListTile(
-                  title: Text(job.title),
-                  subtitle: Text(
-                    'Durum: ${Labels.jobStatus(job.status)}'
-                    ' | Öncelik: ${Labels.priority(job.priority)}'
-                    '${job.location != null ? " | ${job.location}" : ""}',
-                  ),
-                  trailing: _StatusChip(status: job.status),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => JobDetailScreen(jobId: job.id),
-                      ),
-                    ).then((_) {
-                      ref.invalidate(jobsProvider);
-                      ref.invalidate(jobPhotosProvider(job.id));
-                      ref.invalidate(jobCommentsProvider(job.id));
-                    });
-                  },
+            itemBuilder: (context, i) {
+              final j = jobs[i];
+              return ListTile(
+                title: Text(j.title),
+                subtitle: Text(
+                  '${Labels.jobStatus(j.status)} · ${Labels.priority(j.priority)}'
+                  '${j.jobCategory.isNotEmpty ? " · ${j.jobCategory}" : ""}',
                 ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => JobDetailScreen(jobId: j.id),
+                    ),
+                  );
+                  ref.invalidate(visibleJobsProvider);
+                  ref.invalidate(openJobsProvider);
+                },
               );
             },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text('Hata: $e')),
+        error: (e, _) => Center(child: Text('$e')),
       ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    switch (status) {
-      case 'PENDING':
-        color = Colors.orange;
-        break;
-      case 'IN_PROGRESS':
-        color = Colors.blue;
-        break;
-      case 'COMPLETED':
-        color = Colors.green;
-        break;
-      case 'APPROVED':
-        color = Colors.teal;
-        break;
-      default:
-        color = Colors.grey;
-    }
-    return Chip(
-      label: Text(
-        Labels.jobStatus(status),
-        style: const TextStyle(color: Colors.white, fontSize: 11),
-      ),
-      backgroundColor: color,
-      padding: EdgeInsets.zero,
     );
   }
 }
