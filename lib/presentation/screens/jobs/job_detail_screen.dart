@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/providers.dart';
 import '../../../core/utils/labels.dart';
+import '../../../data/database/app_database.dart';
 import '../../../services/job_service.dart';
 
 class JobDetailScreen extends ConsumerStatefulWidget {
@@ -18,6 +20,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
   final _picker = ImagePicker();
   final _commentController = TextEditingController();
   bool _savingComment = false;
+  bool _sharing = false;
 
   @override
   void dispose() {
@@ -34,15 +37,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       jobId: widget.jobId,
       newStatus: newStatus,
       startTime: newStatus == 'IN_PROGRESS' ? now : null,
-      endTime:
-          (newStatus == 'COMPLETED' || newStatus == 'APPROVED') ? now : null,
+      endTime: (newStatus == 'COMPLETED' || newStatus == 'APPROVED') ? now : null,
       completedByName: user.fullName,
     );
     ref.invalidate(jobsProvider);
     setState(() {});
   }
 
-  Future<void> _addPhoto() async {
+  Future<void> _addPhoto(String phase) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -65,39 +67,38 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     );
     if (source == null) return;
 
-    final image = await _picker.pickImage(source: source, imageQuality: 60, maxWidth: 1280, maxHeight: 1280);
+    final image = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1600,
+    );
     if (image == null) return;
 
-    String? note;
-    if (mounted) {
-      note = await showDialog<String>(
-        context: context,
-        builder: (ctx) {
-          final c = TextEditingController();
-          return AlertDialog(
-            title: const Text('Fotoğraf notu (isteğe bağlı)'),
-            content: TextField(
-              controller: c,
-              decoration: const InputDecoration(
-                hintText: 'Kısa açıklama...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Atla'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, c.text.trim()),
-                child: const Text('Kaydet'),
-              ),
-            ],
-          );
-        },
-      );
-    }
+    final note = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final c = TextEditingController();
+        return AlertDialog(
+          title: Text(phase == 'BEFORE'
+              ? 'Is oncesi foto'
+              : phase == 'AFTER'
+                  ? 'Is sonrasi foto'
+                  : 'Foto aciklama'),
+          content: TextField(
+            controller: c,
+            decoration: const InputDecoration(hintText: 'Opsiyonel aciklama'),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: const Text('Iptal')),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, c.text),
+                child: const Text('Kaydet')),
+          ],
+        );
+      },
+    );
+    if (note == null) return;
 
     final service = JobService(ref.read(databaseProvider));
     final user = ref.read(currentUserProvider)!;
@@ -105,12 +106,19 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       jobId: widget.jobId,
       photoPath: image.path,
       uploadedById: user.id,
-      description: (note != null && note.isNotEmpty) ? note : null,
+      photoPhase: phase,
+      description: note.isNotEmpty ? note : null,
     );
     ref.invalidate(jobPhotosProvider(widget.jobId));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fotoğraf eklendi')),
+        SnackBar(
+          content: Text(phase == 'BEFORE'
+              ? 'Oncesi foto eklendi'
+              : phase == 'AFTER'
+                  ? 'Sonrasi foto eklendi'
+                  : 'Foto eklendi'),
+        ),
       );
       setState(() {});
     }
@@ -130,10 +138,63 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     _commentController.clear();
     setState(() => _savingComment = false);
     ref.invalidate(jobCommentsProvider(widget.jobId));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Yorum eklendi')),
-      );
+  }
+
+  /// WhatsApp: is basina SINIRSIZ foto
+  Future<void> _shareWhatsApp(Job job, List<JobPhoto> photos) async {
+    setState(() => _sharing = true);
+    try {
+      final before = photos.where((p) => p.photoPhase == 'BEFORE').toList();
+      final after = photos.where((p) => p.photoPhase == 'AFTER').toList();
+      final general = photos
+          .where((p) => p.photoPhase != 'BEFORE' && p.photoPhase != 'AFTER')
+          .toList();
+
+      final buf = StringBuffer();
+      buf.writeln('*M/V Zeynep C — Guverte Is Raporu*');
+      buf.writeln('');
+      buf.writeln('*Is:* ${job.title}');
+      if (job.location != null && job.location!.isNotEmpty) {
+        buf.writeln('*Lokasyon:* ${job.location}');
+      }
+      buf.writeln('*Durum:* ${Labels.jobStatus(job.status)}');
+      buf.writeln('*Oncelik:* ${Labels.priority(job.priority)}');
+      if (job.startTime != null) {
+        buf.writeln(
+            '*Baslangic:* ${job.startTime.toString().substring(0, 16)}');
+      }
+      if (job.endTime != null) {
+        buf.writeln('*Bitis:* ${job.endTime.toString().substring(0, 16)}');
+      }
+      if (job.description != null && job.description!.isNotEmpty) {
+        buf.writeln('');
+        buf.writeln('*Is kapsami / aciklama:*');
+        buf.writeln(job.description);
+      }
+      buf.writeln('');
+      buf.writeln(
+          'Oncesi: ${before.length}  |  Sonrasi: ${after.length}');
+      buf.writeln('');
+      buf.writeln('_M/V Zeynep C Master_');
+
+      final files = <XFile>[];
+      for (final p in [...before, ...after, ...general]) {
+        if (File(p.photoPath).existsSync()) {
+          files.add(XFile(p.photoPath));
+        }
+      }
+
+      if (files.isEmpty) {
+        await Share.share(buf.toString(), subject: 'M/V Zeynep C Is Raporu');
+      } else {
+        await Share.shareXFiles(
+          files,
+          text: buf.toString(),
+          subject: 'M/V Zeynep C — ${job.title}',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
     }
   }
 
@@ -147,11 +208,45 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => const Padding(
               padding: EdgeInsets.all(24),
-              child: Text('Fotoğraf yüklenemedi'),
+              child: Text('Fotograf yuklenemedi'),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _photoGrid(List<JobPhoto> list, String emptyLabel) {
+    if (list.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(emptyLabel,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+      );
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: list.map((ph) {
+        return GestureDetector(
+          onTap: () => _openPhoto(ph.photoPath),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              File(ph.photoPath),
+              width: 96,
+              height: 96,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 96,
+                height: 96,
+                color: Colors.grey.shade300,
+                child: const Icon(Icons.broken_image),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -160,239 +255,169 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     final db = ref.watch(databaseProvider);
     final currentUser = ref.watch(currentUserProvider)!;
 
-    return FutureBuilder(
+    return FutureBuilder<Job?>(
       future: (db.select(db.jobs)..where((j) => j.id.equals(widget.jobId)))
           .getSingleOrNull(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+      builder: (context, snap) {
+        if (!snap.hasData) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+              body: Center(child: CircularProgressIndicator()));
         }
-        final job = snapshot.data;
-        if (job == null) {
-          return const Scaffold(body: Center(child: Text('İş bulunamadı')));
-        }
+        final job = snap.data!;
+        final photosAsync = ref.watch(jobPhotosProvider(widget.jobId));
+        final commentsAsync = ref.watch(jobCommentsProvider(widget.jobId));
+        final photos = photosAsync.valueOrNull ?? [];
+        final before = photos.where((p) => p.photoPhase == 'BEFORE').toList();
+        final after = photos.where((p) => p.photoPhase == 'AFTER').toList();
+        final other = photos
+            .where((p) => p.photoPhase != 'BEFORE' && p.photoPhase != 'AFTER')
+            .toList();
+
+        final canManage =
+            ['ROOT', 'MASTER', 'SECOND', 'REIS'].contains(currentUser.role);
 
         return Scaffold(
-          appBar: AppBar(title: const Text('İş Detayı')),
+          appBar: AppBar(
+            title: const Text('Is Detayi'),
+            actions: [
+              IconButton(
+                icon: _sharing
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.share),
+                tooltip: 'WhatsApp / Paylas',
+                onPressed:
+                    _sharing ? null : () => _shareWhatsApp(job, photos),
+              ),
+            ],
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(job.title, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  Chip(
-                    label: Text(Labels.jobStatus(job.status)),
-                    backgroundColor: _statusColor(job.status).withOpacity(0.2),
-                  ),
-                  Chip(label: Text('Öncelik: ${Labels.priority(job.priority)}')),
-                ],
-              ),
-              if (job.location != null) ...[
-                const SizedBox(height: 4),
-                Text('Lokasyon: ${job.location}'),
-              ],
+              Text(job.title,
+                  style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 6),
+              Text(
+                  'Durum: ${Labels.jobStatus(job.status)}  |  ${Labels.priority(job.priority)}'),
+              if (job.location != null) Text('Lokasyon: ${job.location}'),
+              if (job.startTime != null)
+                Text(
+                    'Baslangic: ${job.startTime.toString().substring(0, 16)}'),
+              if (job.endTime != null)
+                Text('Bitis: ${job.endTime.toString().substring(0, 16)}'),
               if (job.description != null && job.description!.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(job.description!),
+                Text(job.description!, style: const TextStyle(height: 1.35)),
               ],
-              if (job.startTime != null)
-                Text('Başlangıç: ${_fmt(job.startTime!)}'),
-              if (job.endTime != null) Text('Bitiş: ${_fmt(job.endTime!)}'),
-              const Divider(height: 32),
-              const Text('Durum İşlemleri',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
-                  if (job.status == 'PENDING')
-                    ElevatedButton.icon(
+                  if (job.status == 'PENDING' || job.status == 'ASSIGNED')
+                    ElevatedButton(
                       onPressed: () => _changeStatus('IN_PROGRESS'),
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('İşe Başla'),
+                      child: const Text('Ise basla'),
                     ),
                   if (job.status == 'IN_PROGRESS')
-                    ElevatedButton.icon(
+                    ElevatedButton(
                       onPressed: () => _changeStatus('COMPLETED'),
-                      icon: const Icon(Icons.check),
-                      label: const Text('Tamamla'),
+                      child: const Text('Tamamla'),
                     ),
-                  if (job.status == 'COMPLETED' &&
-                      ['ROOT', 'MASTER', 'SECOND', 'REIS']
-                          .contains(currentUser.role))
-                    ElevatedButton.icon(
+                  if (canManage && job.status == 'COMPLETED')
+                    ElevatedButton(
                       onPressed: () => _changeStatus('APPROVED'),
-                      icon: const Icon(Icons.verified),
-                      label: const Text('Onayla'),
+                      child: const Text('Onayla'),
                     ),
                 ],
               ),
-              const Divider(height: 32),
-              // —— Fotoğraflar ——
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Fotoğraflar',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  TextButton.icon(
-                    onPressed: _addPhoto,
-                    icon: const Icon(Icons.add_a_photo),
-                    label: const Text('Ekle'),
-                  ),
-                ],
+              const Divider(height: 28),
+              const Text('Is oncesi fotograflar',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              _photoGrid(before, 'Henuz oncesi foto yok'),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _addPhoto('BEFORE'),
+                icon: const Icon(Icons.add_a_photo),
+                label: const Text('Oncesi foto ekle'),
               ),
-              Consumer(
-                builder: (context, ref, _) {
-                  final photosAsync =
-                      ref.watch(jobPhotosProvider(widget.jobId));
-                  return photosAsync.when(
-                    data: (photos) {
-                      if (photos.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Henüz fotoğraf yok. Kamera veya galeriden ekleyin.'),
-                        );
-                      }
-                      return SizedBox(
-                        height: 140,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: photos.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final ph = photos[i];
-                            final file = File(ph.photoPath);
-                            return GestureDetector(
-                              onTap: () {
-                                if (file.existsSync()) {
-                                  _openPhoto(ph.photoPath);
-                                }
-                              },
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: file.existsSync()
-                                    ? Image.file(
-                                        file,
-                                        width: 140,
-                                        height: 140,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Container(
-                                        width: 140,
-                                        height: 140,
-                                        color: Colors.grey.shade300,
-                                        alignment: Alignment.center,
-                                        child: const Icon(Icons.broken_image),
-                                      ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                    loading: () => const CircularProgressIndicator(),
-                    error: (e, s) => Text('Hata: $e'),
-                  );
-                },
+              const SizedBox(height: 16),
+              const Text('Is sonrasi fotograflar',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              _photoGrid(after, 'Henuz sonrasi foto yok'),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _addPhoto('AFTER'),
+                icon: const Icon(Icons.add_a_photo),
+                label: const Text('Sonrasi foto ekle'),
               ),
-              const Divider(height: 32),
-              // —— Yorumlar ——
+              if (other.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('Diger fotograflar',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                _photoGrid(other, ''),
+              ],
+              const Divider(height: 28),
               const Text('Yorumlar',
                   style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Consumer(
-                builder: (context, ref, _) {
-                  final commentsAsync =
-                      ref.watch(jobCommentsProvider(widget.jobId));
-                  final usersAsync = ref.watch(usersProvider);
-                  return commentsAsync.when(
-                    data: (comments) {
-                      if (comments.isEmpty) {
-                        return const Text('Henüz yorum yok.');
-                      }
-                      final users = usersAsync.valueOrNull ?? [];
-                      String nameOf(int id) {
-                        final u = users.where((x) => x.id == id);
-                        return u.isEmpty ? 'Kullanıcı #$id' : u.first.fullName;
-                      }
-                      return Column(
-                        children: comments.map((c) {
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
+              commentsAsync.when(
+                data: (comments) {
+                  if (comments.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text('Yorum yok'),
+                    );
+                  }
+                  return Column(
+                    children: comments
+                        .map((c) => ListTile(
+                              dense: true,
                               title: Text(c.comment),
                               subtitle: Text(
-                                '${nameOf(c.userId)} • ${_fmt(c.createdAt)}',
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                    loading: () => const CircularProgressIndicator(),
-                    error: (e, s) => Text('$e'),
+                                  c.createdAt.toString().substring(0, 16)),
+                            ))
+                        .toList(),
                   );
                 },
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('$e'),
               ),
-              const SizedBox(height: 12),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _commentController,
                       decoration: const InputDecoration(
-                        labelText: 'Yorum yaz...',
+                        hintText: 'Yorum yaz...',
                         border: OutlineInputBorder(),
+                        isDense: true,
                       ),
-                      maxLines: 2,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton.filled(
+                  IconButton(
                     onPressed: _savingComment ? null : _addComment,
-                    icon: _savingComment
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
+                    icon: const Icon(Icons.send),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed:
+                    _sharing ? null : () => _shareWhatsApp(job, photos),
+                icon: const Icon(Icons.chat),
+                label: const Text('WhatsApp / Paylasim hazirla'),
+              ),
             ],
           ),
         );
       },
     );
-  }
-
-  static Color _statusColor(String status) {
-    switch (status) {
-      case 'PENDING':
-        return Colors.orange;
-      case 'IN_PROGRESS':
-        return Colors.blue;
-      case 'COMPLETED':
-        return Colors.green;
-      case 'APPROVED':
-        return Colors.teal;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  static String _fmt(DateTime d) {
-    return '${d.day.toString().padLeft(2, '0')}.'
-        '${d.month.toString().padLeft(2, '0')}.'
-        '${d.year} ${d.hour.toString().padLeft(2, '0')}:'
-        '${d.minute.toString().padLeft(2, '0')}';
   }
 }
