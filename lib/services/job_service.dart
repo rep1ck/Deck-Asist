@@ -16,6 +16,8 @@ class JobService {
     String? description,
     String? location,
     String priority = 'NORMAL',
+    String jobCategory = 'GENEL',
+    String? weatherNote,
     required int createdById,
     List<int> assignedUserIds = const [],
   }) async {
@@ -25,6 +27,8 @@ class JobService {
           description: Value(description),
           location: Value(location),
           priority: Value(priority),
+          jobCategory: Value(jobCategory),
+          weatherNote: Value(weatherNote),
           createdBy: createdById,
         ));
 
