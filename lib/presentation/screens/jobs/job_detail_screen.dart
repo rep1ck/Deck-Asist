@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/providers.dart';
 import '../../../core/utils/labels.dart';
+import '../../../core/utils/ship_settings.dart';
 import '../../../data/database/app_database.dart';
 import '../../../services/job_service.dart';
 
@@ -41,6 +42,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       completedByName: user.fullName,
     );
     ref.invalidate(jobsProvider);
+    ref.invalidate(visibleJobsProvider);
+    ref.invalidate(openJobsProvider);
     setState(() {});
   }
 
@@ -140,7 +143,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     ref.invalidate(jobCommentsProvider(widget.jobId));
   }
 
-  /// WhatsApp: is basina SINIRSIZ foto
   Future<void> _shareWhatsApp(Job job, List<JobPhoto> photos) async {
     setState(() => _sharing = true);
     try {
@@ -150,15 +152,27 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
           .where((p) => p.photoPhase != 'BEFORE' && p.photoPhase != 'AFTER')
           .toList();
 
+      final db = ref.read(databaseProvider);
+      final comments = await (db.select(db.jobComments)
+            ..where((c) => c.jobId.equals(job.id)))
+          .get();
+
+      final ship = await ShipSettings.shipName();
+      final sign = await ShipSettings.signatureBlock();
+
       final buf = StringBuffer();
-      buf.writeln('*M/V Zeynep C — Guverte Is Raporu*');
+      buf.writeln('*$ship — Guverte Is Raporu*');
       buf.writeln('');
       buf.writeln('*Is:* ${job.title}');
+      buf.writeln('*Durum:* ${Labels.jobStatus(job.status)}');
+      buf.writeln('*Oncelik:* ${Labels.priority(job.priority)}');
+      buf.writeln('*Kategori:* ${Labels.jobCategory(job.jobCategory)}');
       if (job.location != null && job.location!.isNotEmpty) {
         buf.writeln('*Lokasyon:* ${job.location}');
       }
-      buf.writeln('*Durum:* ${Labels.jobStatus(job.status)}');
-      buf.writeln('*Oncelik:* ${Labels.priority(job.priority)}');
+      if (job.weatherNote != null && job.weatherNote!.isNotEmpty) {
+        buf.writeln('*Hava/deniz:* ${job.weatherNote}');
+      }
       if (job.startTime != null) {
         buf.writeln(
             '*Baslangic:* ${job.startTime.toString().substring(0, 16)}');
@@ -171,11 +185,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
         buf.writeln('*Is kapsami / aciklama:*');
         buf.writeln(job.description);
       }
+      if (comments.isNotEmpty) {
+        buf.writeln('');
+        buf.writeln('*Yorumlar:*');
+        for (final c in comments) {
+          buf.writeln('• ${c.comment}');
+        }
+      }
       buf.writeln('');
       buf.writeln(
           'Oncesi: ${before.length}  |  Sonrasi: ${after.length}');
       buf.writeln('');
-      buf.writeln('_M/V Zeynep C Master_');
+      buf.writeln('_${sign}_');
 
       final files = <XFile>[];
       for (final p in [...before, ...after, ...general]) {
@@ -185,12 +206,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       }
 
       if (files.isEmpty) {
-        await Share.share(buf.toString(), subject: 'M/V Zeynep C Is Raporu');
+        await Share.share(buf.toString(), subject: '$ship Is Raporu');
       } else {
         await Share.shareXFiles(
           files,
           text: buf.toString(),
-          subject: 'M/V Zeynep C — ${job.title}',
+          subject: '$ship — ${job.title}',
         );
       }
     } finally {
@@ -302,7 +323,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
               const SizedBox(height: 6),
               Text(
                   'Durum: ${Labels.jobStatus(job.status)}  |  ${Labels.priority(job.priority)}'),
+              Text('Kategori: ${Labels.jobCategory(job.jobCategory)}'),
               if (job.location != null) Text('Lokasyon: ${job.location}'),
+              if (job.weatherNote != null)
+                Text('Hava/deniz: ${job.weatherNote}'),
               if (job.startTime != null)
                 Text(
                     'Baslangic: ${job.startTime.toString().substring(0, 16)}'),
@@ -310,6 +334,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                 Text('Bitis: ${job.endTime.toString().substring(0, 16)}'),
               if (job.description != null && job.description!.isNotEmpty) ...[
                 const SizedBox(height: 8),
+                const Text('Aciklama / is kapsami',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 Text(job.description!, style: const TextStyle(height: 1.35)),
               ],
               const SizedBox(height: 16),
