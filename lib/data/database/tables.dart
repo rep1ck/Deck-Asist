@@ -47,6 +47,8 @@ class JobPhotos extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get jobId => integer()();
   TextColumn get photoPath => text()();
+  /// BEFORE | AFTER | GENERAL
+  TextColumn get photoPhase => text().withDefault(const Constant('GENERAL'))();
   IntColumn get uploadedBy => integer()();
   IntColumn get approvedBy => integer().nullable()();
   TextColumn get approvalStatus => text().withDefault(const Constant('PENDING'))();
