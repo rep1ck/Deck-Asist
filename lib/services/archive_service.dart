@@ -11,7 +11,7 @@ class ArchiveService {
   Future<ArchiveResult> archiveCompletedJobs({int olderThanDays = 14}) async {
     final cutoff = DateTime.now().subtract(Duration(days: olderThanDays));
     final jobs = await (db.select(db.jobs)
-          ..where((j) => j.status.equals('COMPLETED') | j.status.equals('APPROVED')))
+          ..where((j) => j.status.isIn(['COMPLETED', 'APPROVED'])))
         .get();
 
     final oldJobs = jobs.where((j) {
