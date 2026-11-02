@@ -62,7 +62,8 @@ class SyncService {
       _discoverySocket!.broadcastEnabled = true;
       _discoverySocket!.listen(_handleDiscovery);
       await _broadcastPresence();
-      _advertiseTimer = Timer.periodic(const Duration(seconds: 8), (_) => _broadcastPresence());
+      _advertiseTimer =
+          Timer.periodic(const Duration(seconds: 8), (_) => _broadcastPresence());
       _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
         if (!_syncing) await syncWithDiscoveredPeers();
       });
@@ -104,9 +105,8 @@ class SyncService {
       'deviceId': await deviceId,
       'httpPort': httpPort,
     });
-    final data = utf8.encode(msg);
     try {
-      sock.send(data, InternetAddress('255.255.255.255'), discoveryPort);
+      sock.send(utf8.encode(msg), InternetAddress('255.255.255.255'), discoveryPort);
     } catch (_) {}
   }
 
@@ -120,8 +120,7 @@ class SyncService {
       final id = map['deviceId'] as String?;
       final port = map['httpPort'] as int? ?? httpPort;
       if (id == null || id == _deviceId) return;
-      final host = dg.address.address;
-      _knownPeers[id] = 'http://$host:$port';
+      _knownPeers[id] = 'http://${dg.address.address}:$port';
     } catch (_) {}
   }
 
@@ -166,6 +165,17 @@ class SyncService {
     await req.response.close();
   }
 
+  Future<List<String>> discoverPeers() async {
+    if (_server == null) {
+      try {
+        await start();
+      } catch (_) {}
+    }
+    await _broadcastPresence();
+    await Future.delayed(const Duration(milliseconds: 600));
+    return _knownPeers.values.toList();
+  }
+
   Future<SyncResult> syncWithDiscoveredPeers() async {
     if (_syncing) {
       return const SyncResult(success: false, message: 'Senkron zaten suruyor');
@@ -185,23 +195,22 @@ class SyncService {
       await _broadcastPresence();
       await Future.delayed(const Duration(milliseconds: 400));
       final security = _security ??= await SyncSecurity.load();
-      final snap = await _snapshot();
-      final body = jsonEncode(snap);
+      final body = jsonEncode(await _snapshot());
       for (final entry in _knownPeers.entries) {
         try {
           final headers = security.sign('POST', '/sync', body);
           final res = await http
-              .post(Uri.parse('${entry.value}/sync'),
-                  headers: {
-                    'Content-Type': 'application/json',
-                    ...headers,
-                  },
-                  body: body)
+              .post(
+                Uri.parse('${entry.value}/sync'),
+                headers: {'Content-Type': 'application/json', ...headers},
+                body: body,
+              )
               .timeout(const Duration(seconds: 25));
           if (res.statusCode != 200) continue;
           peers++;
           final remote = jsonDecode(res.body) as Map<String, dynamic>;
-          final result = await _mergeSnapshot(remote['snapshot'] as Map<String, dynamic>? ?? {});
+          final result = await _mergeSnapshot(
+              remote['snapshot'] as Map<String, dynamic>? ?? {});
           merged += result['merged'] as int;
           conflicts += result['conflicts'] as int;
         } catch (_) {}
@@ -382,56 +391,56 @@ class SyncService {
     final inventory = <String, int>{};
     final plans = <String, int>{};
 
-    List<Map<String, dynamic>> _list(dynamic v) {
+    List<Map<String, dynamic>> listOf(dynamic v) {
       if (v is! List) return [];
       return v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     }
 
-    for (final r in _list(incoming['users'])) {
+    for (final r in listOf(incoming['users'])) {
       final o = await _mergeUser(r);
       if (r['syncId'] != null) users[r['syncId'] as String] = o.id;
       if (o.merged) merged++;
       if (o.conflict) conflicts++;
     }
-    for (final r in _list(incoming['jobs'])) {
+    for (final r in listOf(incoming['jobs'])) {
       final o = await _mergeJob(r, users);
       if (r['syncId'] != null) jobs[r['syncId'] as String] = o.id;
       if (o.merged) merged++;
       if (o.conflict) conflicts++;
     }
-    for (final r in _list(incoming['inventoryItems'])) {
+    for (final r in listOf(incoming['inventoryItems'])) {
       final o = await _mergeInventory(r);
       if (r['syncId'] != null) inventory[r['syncId'] as String] = o.id;
       if (o.merged) merged++;
       if (o.conflict) conflicts++;
     }
-    for (final r in _list(incoming['maintenancePlans'])) {
+    for (final r in listOf(incoming['maintenancePlans'])) {
       final o = await _mergePlan(r, users);
       if (r['syncId'] != null) plans[r['syncId'] as String] = o.id;
       if (o.merged) merged++;
       if (o.conflict) conflicts++;
     }
-    for (final r in _list(incoming['jobAssignments'])) {
+    for (final r in listOf(incoming['jobAssignments'])) {
       if (jobs[r['jobSyncId']] != null && users[r['userSyncId']] != null) {
         if (await _mergeAssignment(r, jobs, users)) merged++;
       }
     }
-    for (final r in _list(incoming['jobPhotos'])) {
+    for (final r in listOf(incoming['jobPhotos'])) {
       if (jobs[r['jobSyncId']] != null && users[r['uploadedBySyncId']] != null) {
         if (await _mergePhoto(r, jobs, users)) merged++;
       }
     }
-    for (final r in _list(incoming['jobComments'])) {
+    for (final r in listOf(incoming['jobComments'])) {
       if (jobs[r['jobSyncId']] != null && users[r['userSyncId']] != null) {
         if (await _mergeComment(r, jobs, users)) merged++;
       }
     }
-    for (final r in _list(incoming['stockMovements'])) {
+    for (final r in listOf(incoming['stockMovements'])) {
       if (inventory[r['itemSyncId']] != null && users[r['userSyncId']] != null) {
         if (await _mergeMovement(r, inventory, users)) merged++;
       }
     }
-    for (final r in _list(incoming['maintenanceRecords'])) {
+    for (final r in listOf(incoming['maintenanceRecords'])) {
       if (plans[r['planSyncId']] != null && users[r['doneBySyncId']] != null) {
         if (await _mergeRecord(r, plans, users)) merged++;
       }
@@ -445,7 +454,8 @@ class SyncService {
     var local = await (db.select(db.users)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     local ??= await (db.select(db.users)..where((t) => t.username.equals(r['username'] as String))).getSingleOrNull();
     final remoteHash = r['passwordHash'] as String?;
-    final lastLogin = r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'] as String);
+    final lastLogin =
+        r['lastLogin'] == null ? null : DateTime.parse(r['lastLogin'] as String);
     if (local == null) {
       final hasHash = remoteHash != null && remoteHash.isNotEmpty;
       final id = await db.into(db.users).insert(UsersCompanion.insert(
@@ -528,14 +538,17 @@ class SyncService {
     final sid = r['syncId'] as String;
     final remoteUpdated = DateTime.parse(r['updatedAt'] as String);
     var local = await (db.select(db.inventoryItems)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
-    local ??= await (db.select(db.inventoryItems)..where((t) => t.barcode.equals(r['barcode'] as String))).getSingleOrNull();
+    local ??= await (db.select(db.inventoryItems)
+          ..where((t) => t.barcode.equals(r['barcode'] as String)))
+        .getSingleOrNull();
+    final brand = (r['brand'] as String?) ?? 'Akzo Nobel / International';
     if (local == null) {
       final id = await db.into(db.inventoryItems).insert(InventoryItemsCompanion.insert(
             syncId: Value(sid),
             barcode: r['barcode'] as String,
             name: r['name'] as String,
             color: Value(r['color'] as String?),
-            brand: Value(r['brand'] as String?),
+            brand: Value(brand),
             category: r['category'] as String,
             unit: Value((r['unit'] as String?) ?? 'Lt'),
             packSize: Value(r['packSize'] as String?),
@@ -551,7 +564,7 @@ class SyncService {
             barcode: Value(r['barcode'] as String),
             name: Value(r['name'] as String),
             color: Value(r['color'] as String?),
-            brand: Value(r['brand'] as String?),
+            brand: Value(brand),
             category: Value(r['category'] as String),
             unit: Value(r['unit'] as String? ?? local.unit),
             packSize: Value(r['packSize'] as String?),
@@ -569,7 +582,8 @@ class SyncService {
     final createdBy = users[r['createdBySyncId']];
     if (createdBy == null) return const _MergeOutcome(-1, false, false);
     final remoteUpdated = DateTime.parse(r['updatedAt'] as String);
-    final local = await (db.select(db.maintenancePlans)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
+    final local =
+        await (db.select(db.maintenancePlans)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     if (local == null) {
       final id = await db.into(db.maintenancePlans).insert(MaintenancePlansCompanion.insert(
             syncId: Value(sid),
@@ -602,9 +616,11 @@ class SyncService {
     return _MergeOutcome(local.id, false, false);
   }
 
-  Future<bool> _mergeAssignment(Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
+  Future<bool> _mergeAssignment(
+      Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
     final sid = r['syncId'] as String;
-    final local = await (db.select(db.jobAssignments)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
+    final local =
+        await (db.select(db.jobAssignments)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     if (local != null) return false;
     await db.into(db.jobAssignments).insert(JobAssignmentsCompanion.insert(
           syncId: Value(sid),
@@ -629,11 +645,14 @@ class SyncService {
     }
   }
 
-  Future<bool> _mergePhoto(Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
+  Future<bool> _mergePhoto(
+      Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
     final sid = r['syncId'] as String;
     final remoteUpdated = DateTime.parse(r['updatedAt'] as String);
-    final local = await (db.select(db.jobPhotos)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
-    final approvedBy = r['approvedBySyncId'] == null ? null : users[r['approvedBySyncId']];
+    final local =
+        await (db.select(db.jobPhotos)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
+    final approvedBy =
+        r['approvedBySyncId'] == null ? null : users[r['approvedBySyncId']];
     final jobId = jobs[r['jobSyncId']];
     final uploader = users[r['uploadedBySyncId']];
     if (jobId == null || uploader == null) return false;
@@ -684,12 +703,14 @@ class SyncService {
     return false;
   }
 
-  Future<bool> _mergeComment(Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
+  Future<bool> _mergeComment(
+      Map<String, dynamic> r, Map<String, int> jobs, Map<String, int> users) async {
     final sid = r['syncId'] as String;
     final jobId = jobs[r['jobSyncId']];
     final userId = users[r['userSyncId']];
     if (jobId == null || userId == null) return false;
-    final local = await (db.select(db.jobComments)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
+    final local =
+        await (db.select(db.jobComments)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     if (local != null) return false;
     await db.into(db.jobComments).insert(JobCommentsCompanion.insert(
           syncId: Value(sid),
@@ -701,12 +722,14 @@ class SyncService {
     return true;
   }
 
-  Future<bool> _mergeMovement(Map<String, dynamic> r, Map<String, int> inventory, Map<String, int> users) async {
+  Future<bool> _mergeMovement(
+      Map<String, dynamic> r, Map<String, int> inventory, Map<String, int> users) async {
     final sid = r['syncId'] as String;
     final itemId = inventory[r['itemSyncId']];
     final userId = users[r['userSyncId']];
     if (itemId == null || userId == null) return false;
-    final local = await (db.select(db.stockMovements)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
+    final local =
+        await (db.select(db.stockMovements)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     if (local != null) return false;
     await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
           syncId: Value(sid),
@@ -721,12 +744,14 @@ class SyncService {
     return true;
   }
 
-  Future<bool> _mergeRecord(Map<String, dynamic> r, Map<String, int> plans, Map<String, int> users) async {
+  Future<bool> _mergeRecord(
+      Map<String, dynamic> r, Map<String, int> plans, Map<String, int> users) async {
     final sid = r['syncId'] as String;
     final planId = plans[r['planSyncId']];
     final doneBy = users[r['doneBySyncId']];
     if (planId == null || doneBy == null) return false;
-    final local = await (db.select(db.maintenanceRecords)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
+    final local =
+        await (db.select(db.maintenanceRecords)..where((t) => t.syncId.equals(sid))).getSingleOrNull();
     if (local != null) return false;
     await db.into(db.maintenanceRecords).insert(MaintenanceRecordsCompanion.insert(
           syncId: Value(sid),
