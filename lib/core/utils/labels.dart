@@ -6,11 +6,11 @@ class Labels {
       case 'IN_PROGRESS':
         return 'Devam Ediyor';
       case 'COMPLETED':
-        return 'Tamamlandi';
+        return 'Tamamlandı';
       case 'APPROVED':
-        return 'Onaylandi';
+        return 'Onaylandı';
       case 'CANCELLED':
-        return 'Iptal';
+        return 'İptal';
       default:
         return status;
     }
@@ -19,11 +19,11 @@ class Labels {
   static String priority(String p) {
     switch (p) {
       case 'LOW':
-        return 'Dusuk';
+        return 'Düşük';
       case 'NORMAL':
         return 'Normal';
       case 'HIGH':
-        return 'Yuksek';
+        return 'Yüksek';
       case 'URGENT':
         return 'Acil';
       default:
@@ -34,13 +34,13 @@ class Labels {
   static String movementType(String t) {
     switch (t) {
       case 'GIRIS':
-        return 'Giris (Stok Ekle)';
+        return 'Giriş (Stok Ekle)';
       case 'CIKIS':
-        return 'Cikis (Kullanim)';
+        return 'Çıkış (Kullanım)';
       case 'SAYIM':
-        return 'Sayim';
+        return 'Sayım';
       case 'DUZELTME':
-        return 'Duzeltme';
+        return 'Düzeltme';
       default:
         return t;
     }
@@ -49,17 +49,17 @@ class Labels {
   static String role(String r) {
     switch (r) {
       case 'ROOT':
-        return 'Sistem Yoneticisi';
+        return 'Sistem Yöneticisi';
       case 'MASTER':
         return 'Master (Kaptan)';
       case 'SECOND':
         return '2. Kaptan';
       case 'REIS':
-        return 'Guverte Reisi';
+        return 'Güverte Reisi';
       case 'PERSONEL':
-        return 'Guverte Personeli';
+        return 'Güverte Personeli';
       case 'INSPECTOR':
-        return 'Sirket / Enspektor';
+        return 'Şirket / Enspektör';
       default:
         return r;
     }
@@ -74,65 +74,49 @@ class Labels {
       case 'KABIN':
         return 'Kabin Malzemeleri';
       case 'RASPA':
-        return 'Raspa / Boya Yardimci';
+        return 'Raspa / Boya Yardımcı';
       case 'EL_ALETI':
         return 'Elektrikli / El Aleti';
       case 'KKD':
-        return 'KKD (Gozluk, Eldiven vb.)';
+        return 'KKD (Gözlük, Eldiven vb.)';
       case 'DIGER':
-        return 'Diger';
+        return 'Diğer';
       default:
         return c;
-    }
-  }
-
-  static const categoryValues = [
-    'BOYA',
-    'KUMANYA',
-    'KABIN',
-    'RASPA',
-    'EL_ALETI',
-    'KKD',
-    'DIGER',
-  ];
-
-  static const unitValues = ['Lt', 'Kg', 'Adet', 'Kutu', 'Paket', 'Metre', 'Cift'];
-
-  static String unit(String u) {
-    switch (u) {
-      case 'Lt':
-        return 'Lt (Litre)';
-      case 'Kg':
-        return 'Kg';
-      case 'Adet':
-        return 'Adet';
-      case 'Kutu':
-        return 'Kutu';
-      case 'Paket':
-        return 'Paket';
-      case 'Metre':
-        return 'Metre';
-      case 'Cift':
-        return 'Cift';
-      default:
-        return u;
     }
   }
 
   static String jobCategory(String c) {
     switch (c) {
+      case 'GENEL':
+        return 'Genel';
       case 'BOYA':
         return 'Boya';
       case 'RASPA':
         return 'Raspa';
-      case 'MERDIVEN':
-        return 'Merdiven / Iskele';
-      case 'EMINIYET':
-        return 'Emniyet';
-      case 'GENEL':
-        return 'Genel';
+      case 'TEMIZLIK':
+        return 'Temizlik';
+      case 'GUVENLIK':
+        return 'Güvenlik';
+      case 'EKIPMAN':
+        return 'Ekipman';
+      case 'DIGER':
+        return 'Diğer';
       default:
         return c;
+    }
+  }
+
+  static String photoPhase(String p) {
+    switch (p) {
+      case 'BEFORE':
+        return 'İş Öncesi';
+      case 'AFTER':
+        return 'İş Sonrası';
+      case 'GENERAL':
+        return 'Genel';
+      default:
+        return p;
     }
   }
 }
