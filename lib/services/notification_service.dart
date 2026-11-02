@@ -1,19 +1,37 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+  static bool _ready = false;
 
   static Future<void> init() async {
-    tz.initializeTimeZones();
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _plugin.initialize(
-      const InitializationSettings(android: android),
-    );
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    try {
+      tz.initializeTimeZones();
+    } catch (e) {
+      debugPrint('tz init: $e');
+    }
+
+    try {
+      // ic_launcher yoksa varsayilan android ikonu kullan
+      const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      await _plugin.initialize(
+        const InitializationSettings(android: android),
+      );
+      try {
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
+      } catch (e) {
+        debugPrint('notification permission: $e');
+      }
+      _ready = true;
+    } catch (e, st) {
+      debugPrint('NotificationService.init failed: $e\n$st');
+      _ready = false;
+    }
   }
 
   static Future<void> show({
@@ -21,19 +39,24 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      'deck_asist_channel',
-      'Deck Asist Bildirimleri',
-      channelDescription: 'İş ve bakım bildirimleri',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    await _plugin.show(
-      id,
-      title,
-      body,
-      const NotificationDetails(android: androidDetails),
-    );
+    if (!_ready) return;
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'deck_asist_channel',
+        'Deck Asist Bildirimleri',
+        channelDescription: 'Is ve bakim bildirimleri',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      await _plugin.show(
+        id,
+        title,
+        body,
+        const NotificationDetails(android: androidDetails),
+      );
+    } catch (e) {
+      debugPrint('notification show: $e');
+    }
   }
 
   static Future<void> jobAssigned({
@@ -43,8 +66,8 @@ class NotificationService {
   }) async {
     await show(
       id: jobId,
-      title: 'Yeni İş Atandı',
-      body: '$toName kişisine "$title" işi atandı.',
+      title: 'Yeni Is Atandi',
+      body: '$toName kisisine "$title" isi atandi.',
     );
   }
 
@@ -54,8 +77,8 @@ class NotificationService {
   }) async {
     await show(
       id: jobId + 1000,
-      title: 'İş Başlatıldı',
-      body: '"$title" işine başlandı.',
+      title: 'Is Baslatildi',
+      body: '"$title" isine baslandi.',
     );
   }
 
@@ -66,8 +89,8 @@ class NotificationService {
   }) async {
     await show(
       id: jobId + 2000,
-      title: 'İş Tamamlandı',
-      body: '"$title" işi $byName tarafından tamamlandı.',
+      title: 'Is Tamamlandi',
+      body: '"$title" isi $byName tarafindan tamamlandi.',
     );
   }
 
@@ -77,8 +100,8 @@ class NotificationService {
   }) async {
     await show(
       id: jobId + 3000,
-      title: 'İş Onaylandı',
-      body: '"$title" işi onaylandı.',
+      title: 'Is Onaylandi',
+      body: '"$title" isi onaylandi.',
     );
   }
 
@@ -88,11 +111,11 @@ class NotificationService {
     required int daysLeft,
   }) async {
     final body = daysLeft < 0
-        ? '"$title" bakımı ${-daysLeft} gündür gecikti!'
-        : '"$title" bakımı $daysLeft gün içinde yapılmalı.';
+        ? '"$title" bakimi ${-daysLeft} gundur gecikti!'
+        : '"$title" bakimi $daysLeft gun icinde yapilmali.';
     await show(
       id: planId + 5000,
-      title: 'Bakım Hatırlatması',
+      title: 'Bakim Hatirlatmasi',
       body: body,
     );
   }
@@ -103,8 +126,8 @@ class NotificationService {
   }) async {
     await show(
       id: planId + 6000,
-      title: 'Bakım Tamamlandı',
-      body: '"$title" bakımı tamamlandı.',
+      title: 'Bakim Tamamlandi',
+      body: '"$title" bakimi tamamlandi.',
     );
   }
 }

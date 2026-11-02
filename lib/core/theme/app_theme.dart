@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Güverte / deniz sektörü – göz yormayan sakin palet
+/// Guverte / deniz sektoru – goz yormayan sakin palet
 class AppColors {
   static const Color deepSea = Color(0xFF1A3A4A);
   static const Color slate = Color(0xFF2C4A5A);
@@ -25,6 +25,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: base,
       scaffoldBackgroundColor: AppColors.mist,
+      // Sistem fontu – eksik asset font acilista cokertmesin
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.deepSea,
         foregroundColor: Colors.white,
@@ -41,7 +42,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.deepSea,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
@@ -49,14 +51,16 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.accent,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

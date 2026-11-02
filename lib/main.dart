@@ -1,42 +1,68 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers.dart';
+import 'core/theme/app_theme.dart';
 import 'data/database/app_database.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'services/sync_service.dart';
-import 'core/theme/app_theme.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init();
-  final db = AppDatabase();
-  final sync = SyncService(db);
+
+  // Bildirim basarisiz olsa bile uygulama acilsin
   try {
-    await sync.start();
-  } catch (_) {
+    await NotificationService.init();
+  } catch (e, st) {
+    debugPrint('NotificationService.init hata: $e\n$st');
   }
-  runApp(ProviderScope(
-    overrides: [
-      databaseProvider.overrideWithValue(db),
-      syncServiceProvider.overrideWithValue(sync),
-    ],
-    child: const DeckMasterApp(),
-  ));
+
+  AppDatabase? db;
+  try {
+    db = AppDatabase();
+  } catch (e, st) {
+    debugPrint('AppDatabase acilis hata: $e\n$st');
+    runApp(_BootErrorApp('Veritabani acilamadi: $e'));
+    return;
+  }
+
+  final sync = SyncService(db);
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+        syncServiceProvider.overrideWithValue(sync),
+      ],
+      child: DeckMasterApp(sync: sync),
+    ),
+  );
 }
 
 class DeckMasterApp extends ConsumerStatefulWidget {
-  const DeckMasterApp({super.key});
+  final SyncService sync;
+  const DeckMasterApp({super.key, required this.sync});
 
   @override
   ConsumerState<DeckMasterApp> createState() => _DeckMasterAppState();
 }
 
-class _DeckMasterAppState extends ConsumerState<DeckMasterApp> with WidgetsBindingObserver {
+class _DeckMasterAppState extends ConsumerState<DeckMasterApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // LAN senkronu UI acildiktan sonra baslasin (acilisi engellemesin)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await widget.sync.start();
+      } catch (e, st) {
+        debugPrint('SyncService.start hata: $e\n$st');
+      }
+    });
   }
 
   @override
@@ -48,7 +74,7 @@ class _DeckMasterAppState extends ConsumerState<DeckMasterApp> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(syncServiceProvider).syncWithDiscoveredPeers();
+      unawaited(widget.sync.syncWithDiscoveredPeers());
     }
   }
 
@@ -59,6 +85,28 @@ class _DeckMasterAppState extends ConsumerState<DeckMasterApp> with WidgetsBindi
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const SplashScreen(),
+    );
+  }
+}
+
+class _BootErrorApp extends StatelessWidget {
+  final String message;
+  const _BootErrorApp(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Deck Asist baslatilamadi.\n\n$message',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
