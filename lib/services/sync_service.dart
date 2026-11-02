@@ -178,7 +178,7 @@ class SyncService {
 
   Future<SyncResult> syncWithDiscoveredPeers() async {
     if (_syncing) {
-      return const SyncResult(success: false, message: 'Senkron zaten suruyor');
+      return const SyncResult(success: false, message: 'Senkron zaten sürüyor');
     }
     _syncing = true;
     var merged = 0;
@@ -189,7 +189,7 @@ class SyncService {
         try {
           await start();
         } catch (e) {
-          return SyncResult(success: false, message: 'LAN servis baslatilamadi: $e');
+          return SyncResult(success: false, message: 'LAN servis başlatılamadı: $e');
         }
       }
       await _broadcastPresence();
@@ -218,14 +218,14 @@ class SyncService {
       return SyncResult(
         success: true,
         message: peers == 0
-            ? 'Es bulunamadi (ayni Wi-Fi / LAN kontrol edin)'
-            : '$peers es ile senkron: $merged kayit birlesti',
+            ? 'Aynı ağda başka Deck Asist cihazı bulunamadı'
+            : '$peers eş ile senkron: $merged kayıt birleşti',
         merged: merged,
         conflicts: conflicts,
         peers: peers,
       );
     } catch (e) {
-      return SyncResult(success: false, message: 'Senkron hatasi: $e');
+      return SyncResult(success: false, message: 'Senkron hatası: $e');
     } finally {
       _syncing = false;
     }
