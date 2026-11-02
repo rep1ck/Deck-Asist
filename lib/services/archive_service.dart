@@ -22,7 +22,7 @@ class ArchiveService {
     if (oldJobs.isEmpty) {
       return const ArchiveResult(
         success: true,
-        message: 'Arsivlenecek eski is yok.',
+        message: 'Arşivlenecek eski iş yok.',
         archivedJobs: 0,
         deletedPhotos: 0,
         deletedComments: 0,
@@ -41,17 +41,17 @@ class ArchiveService {
     var photoCount = 0;
     var commentCount = 0;
     final summary = StringBuffer();
-    summary.writeln('Deck Asist Haftalik Arsiv');
+    summary.writeln('Deck Asist Haftalık Arşiv');
     summary.writeln('Tarih: ${DateTime.now()}');
-    summary.writeln('Esik: $olderThanDays gunden eski tamamlanmis isler');
+    summary.writeln('Eşik: $olderThanDays günden eski tamamlanmış işler');
     summary.writeln('');
 
     for (final job in oldJobs) {
-      summary.writeln('--- Is #${job.id}: ${job.title}');
+      summary.writeln('--- İş #${job.id}: ${job.title}');
       summary.writeln('Durum: ${job.status}');
-      summary.writeln('Baslangic: ${job.startTime}');
-      summary.writeln('Bitis: ${job.endTime}');
-      summary.writeln('Olusturma: ${job.createdAt}');
+      summary.writeln('Başlangıç: ${job.startTime}');
+      summary.writeln('Bitiş: ${job.endTime}');
+      summary.writeln('Oluşturma: ${job.createdAt}');
 
       final photos = await (db.select(db.jobPhotos)
             ..where((ph) => ph.jobId.equals(job.id)))
@@ -94,7 +94,7 @@ class ArchiveService {
     return ArchiveResult(
       success: true,
       message:
-          '${oldJobs.length} is arsivlendi. $photoCount fotograf, $commentCount yorum zip\'e alindi ve uygulamadan silindi.',
+          '${oldJobs.length} iş arşivlendi. $photoCount fotoğraf, $commentCount yorum zip\'e alındı ve uygulamadan silindi.',
       archivedJobs: oldJobs.length,
       deletedPhotos: photoCount,
       deletedComments: commentCount,

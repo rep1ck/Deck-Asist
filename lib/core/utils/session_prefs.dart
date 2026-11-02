@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Beni hatirla — kullanici adi + sifre yerel saklama (LAN / offline cihaz)
+/// Beni hatırla — kullanıcı adı + şifre yerel saklama (LAN / offline cihaz)
 class SessionPrefs {
   static const _kRemember = 'remember_me';
   static const _kUser = 'remember_username';
