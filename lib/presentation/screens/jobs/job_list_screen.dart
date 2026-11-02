@@ -17,7 +17,7 @@ class JobListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(user.role == 'PERSONEL' ? 'Is lerim' : 'Isler'),
+        title: Text(user.role == 'PERSONEL' ? 'İşlerim' : 'İşler'),
       ),
       floatingActionButton: canCreate
           ? FloatingActionButton(
@@ -36,7 +36,7 @@ class JobListScreen extends ConsumerWidget {
       body: jobsAsync.when(
         data: (jobs) {
           if (jobs.isEmpty) {
-            return const Center(child: Text('Is bulunamadi'));
+            return const Center(child: Text('İş bulunamadı'));
           }
           return ListView.builder(
             itemCount: jobs.length,
