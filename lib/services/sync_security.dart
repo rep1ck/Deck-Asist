@@ -1,39 +1,55 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import '../data/database/app_database.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
-/// Authentication for Deck Asist LAN sync.
-///
-/// Requests are authenticated with HMAC-SHA256 and contain a timestamp and
-/// nonce so captured requests cannot simply be replayed.
+/// LAN senkronu HMAC kimlik dogrulama.
+/// Anahtar cihazlar arasinda paylasilan ag anahtarindan turetilir.
 class SyncSecurity {
-  static const Duration maxClockSkew = Duration(minutes: 2);
+  static const Duration maxClockSkew = Duration(minutes: 5);
+  static const String defaultSecret = 'deck-asist-default-network-key';
+  static const String _fileName = 'deck_sync_secret.txt';
+
   final List<int> _key;
   final Map<String, DateTime> _seen = <String, DateTime>{};
+  final Random _rng = Random.secure();
 
   SyncSecurity._(this._key);
 
-  static Future<SyncSecurity> fromDatabase(AppDatabase db) async {
-    final users = await db.select(db.users).get();
-    final hashes = users
-        .where((u) => u.isActive == 1)
-        .map((u) => u.passwordHash)
-        .where((h) => h.isNotEmpty)
-        .toList()
-      ..sort();
-    final seed = hashes.isEmpty ? 'deck-asist-no-users' : hashes.join('|');
-    final key = sha256.convert(utf8.encode('deck-asist-lan-v5:$seed')).bytes;
+  factory SyncSecurity.fromSecret(String secret) {
+    final s = secret.trim().isEmpty ? defaultSecret : secret.trim();
+    final key = sha256.convert(utf8.encode('deck-asist-lan-v6:$s')).bytes;
     return SyncSecurity._(key);
   }
 
+  static Future<File> _file() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File(p.join(dir.path, _fileName));
+  }
+
+  static Future<String> loadSecret() async {
+    try {
+      final f = await _file();
+      if (await f.exists()) return (await f.readAsString()).trim();
+    } catch (_) {}
+    return '';
+  }
+
+  static Future<void> saveSecret(String secret) async {
+    final f = await _file();
+    await f.writeAsString(secret.trim(), flush: true);
+  }
+
+  static Future<SyncSecurity> load() async =>
+      SyncSecurity.fromSecret(await loadSecret());
+
   Map<String, String> sign(String method, String path, String body) {
     final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch.toString();
-    final nonce = _randomNonce(timestamp);
-    final canonical = _canonical(timestamp, nonce, method, path, body);
-    final signature = Hmac(sha256, _key)
-        .convert(utf8.encode(canonical))
-        .toString();
+    final nonce = _randomNonce();
+    final signature = _hmac(_canonical(timestamp, nonce, method, path, body));
     return <String, String>{
       'X-Deck-Timestamp': timestamp,
       'X-Deck-Nonce': nonce,
@@ -57,39 +73,37 @@ class SyncSecurity {
     _purge();
     if (_seen.containsKey(nonce)) return false;
 
-    final canonical = _canonical(timestamp, nonce, method, path, body);
-    final expected = Hmac(sha256, _key)
-        .convert(utf8.encode(canonical))
-        .toString();
+    final expected = _hmac(_canonical(timestamp, nonce, method, path, body));
     if (!_constantTimeEquals(expected, signature)) return false;
     _seen[nonce] = DateTime.now().toUtc();
     return true;
   }
 
-  String _canonical(String timestamp, String nonce, String method,
-      String path, String body) {
+  String _canonical(String timestamp, String nonce, String method, String path,
+      String body) {
     final bodyHash = sha256.convert(utf8.encode(body)).toString();
     return '$timestamp\n$nonce\n${method.toUpperCase()}\n$path\n$bodyHash';
   }
 
-  String _randomNonce(String seed) {
-    final digest = sha256.convert(utf8.encode(
-      '$seed:${DateTime.now().microsecondsSinceEpoch}:${_seen.length}',
-    ));
-    return digest.toString();
+  String _hmac(String canonical) =>
+      Hmac(sha256, _key).convert(utf8.encode(canonical)).toString();
+
+  String _randomNonce() {
+    final bytes = List<int>.generate(16, (_) => _rng.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  void _purge() {
+    final cutoff = DateTime.now().toUtc().subtract(maxClockSkew * 2);
+    _seen.removeWhere((_, t) => t.isBefore(cutoff));
   }
 
   bool _constantTimeEquals(String a, String b) {
     if (a.length != b.length) return false;
-    var result = 0;
+    var r = 0;
     for (var i = 0; i < a.length; i++) {
-      result |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+      r |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
     }
-    return result == 0;
-  }
-
-  void _purge() {
-    final cutoff = DateTime.now().toUtc().subtract(maxClockSkew);
-    _seen.removeWhere((_, value) => value.isBefore(cutoff));
+    return r == 0;
   }
 }
